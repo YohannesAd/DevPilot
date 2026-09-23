@@ -4,11 +4,11 @@ DevPilot is a workspace for individual developers to organize projects and track
 
 ## First coding milestone
 
-This repository begins with a small vertical slice: a FastAPI health endpoint and a Next.js page that fetches it. It proves the two applications can communicate before authentication or database work begins. No account or issue data exists yet.
+This repository began with a small vertical slice: a FastAPI health endpoint and a Next.js page that fetches it. PostgreSQL persistence and account registration are now implemented. Login and issue tracking remain future work.
 
 ## Open in VS Code
 
-Open the `devpilot-starter` folder using **File → Open Folder**. Run the backend and frontend in separate VS Code terminals.
+Open the local `DevPilot-starter` folder (GitHub repository: `DevPilot`) using **File → Open Folder**. Run the backend and frontend in separate VS Code terminals.
 
 ### Backend
 
@@ -32,7 +32,8 @@ port `5432`, the login role `devpilot_app` with its password set interactively,
 and the database `devpilot` owned by `devpilot_app`. Connecting in SQL Shell (psql)
 and running `SELECT current_database(), current_user;` confirmed `devpilot` and
 `devpilot_app`. **Do not create this role or database again on this machine.**
-The first Alembic migration has not yet been run against this local database.
+Alembic revision `0001_create_users` has been applied and verified in this local
+database. Registration uses that existing schema; no new migration is needed.
 
 Other developers setting up a **new computer** must install and start PostgreSQL
 and create their own local role and database. Only on a new setup, connect as a
@@ -109,7 +110,7 @@ ROLLBACK;
 
 For a persistence check in your development database, insert the first test row
 again outside the transaction, reconnect (or restart the backend), select it by
-ID, and then delete that test row by ID. No account endpoints exist yet.
+ID, and then delete that test row by ID. Registration is available as described below.
 
 `app/config.py` loads connection settings; `app/database.py` owns the lazy engine
 and closing session dependency; `app/models.py` defines ORM metadata and `User`.
@@ -124,6 +125,76 @@ and `alembic/script.py.mako` is the template for future revisions.
 On a disposable development database only, `alembic downgrade base` reverses the
 migration **and deletes the users table and all its rows**.
 Run `alembic upgrade head` to recreate the empty table.
+
+### Verify registration in VS Code with Git Bash
+
+Terminal 1: select **Git Bash** in VS Code. Starting folder:
+`C:\Users\yohan_0namuao\Downloads\DevPilot-starter`.
+Keep your existing private `backend/.env`; do not copy the example over it.
+
+```bash
+cd backend
+# Only if backend/.venv does not exist: python -m venv .venv
+source .venv/Scripts/activate
+python -m pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+Terminal 2: open another **Git Bash** terminal, also starting in
+`C:\Users\yohan_0namuao\Downloads\DevPilot-starter`. This manual request creates a
+real development row; automated tests use a separate database. The password below
+is a disposable example, not a database credential.
+
+```bash
+curl -i http://127.0.0.1:8000/api/auth/register \
+  -H 'Content-Type: application/json' \
+  --data '{"email":"registration-check@example.com","display_name":"Registration Check","password":"Local-test-password-2026!"}'
+```
+
+Expect HTTP 201 with `id`, `email`, `display_name`, `created_at`, and `updated_at`.
+Repeat with `REGISTRATION-CHECK@example.com` to get HTTP 409. A password shorter
+than 12 characters returns HTTP 422. Passwords and hashes never appear in these
+responses; no cookie is created. You can also use http://127.0.0.1:8000/docs.
+See [the API contract](docs/api.md#registration-implemented) for all input limits
+and error bodies.
+
+### Registration tests (isolated PostgreSQL database)
+
+Tests require an explicit `TEST_DATABASE_URL` for a local database named exactly
+`devpilot_test`. They never fall back to `DATABASE_URL` or read `backend/.env`.
+They apply the existing migration and **clear the test users table before and
+after each test**. Never use this database for data you want to keep.
+
+One-time setup for developers who do not yet have that test database: in Windows
+**SQL Shell (psql)**, connect as your local PostgreSQL administrator to database
+`postgres` at `127.0.0.1:5432`, then run:
+
+```sql
+CREATE DATABASE devpilot_test OWNER devpilot_app;
+```
+
+This is a separate test database; do not recreate the existing `devpilot` database
+or `devpilot_app` role.
+
+In a **Git Bash** terminal starting at
+`C:\Users\yohan_0namuao\Downloads\DevPilot-starter`:
+
+```bash
+cd backend
+source .venv/Scripts/activate
+python -m pip install -r requirements-dev.txt
+# At the hidden prompt, enter a URL for devpilot_test, not devpilot:
+# postgresql+psycopg://devpilot_app:URL_ENCODED_PASSWORD@127.0.0.1:5432/devpilot_test
+read -r -s -p 'Isolated test database URL: ' TEST_DATABASE_URL
+printf '\n'
+export TEST_DATABASE_URL
+python -m pytest tests -q
+unset TEST_DATABASE_URL
+```
+
+Enter the real URL only at that local hidden prompt, never in chat or tracked
+files. Tests cover public responses, Argon2id hashing and salts, input limits,
+case-insensitive duplicates, simultaneous inserts, and rollback/session reuse.
 
 ### Frontend
 
@@ -147,5 +218,5 @@ Visit http://localhost:3000. The page should say **API connected** while the bac
 
 ## Next step
 
-Verify the database migration using the steps above. Registration, login, projects,
-and issues are future work. See `docs/roadmap.md` for the order and acceptance checks.
+Review registration using the steps above. Login, authentication sessions,
+projects, and issues remain future work. See `docs/roadmap.md` for the build order.
