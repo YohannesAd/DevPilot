@@ -1,22 +1,32 @@
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.routes.auth import router as auth_router
+from app.routes.users import router as users_router
+from app.security import SecurityMiddleware
+from app.services.auth import AuthenticationRequired, InvalidCredentials
 
 app = FastAPI(title="DevPilot API")
 
-# Local development only. Replace with a configured exact origin during deployment.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
-    allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
-)
+app.add_middleware(SecurityMiddleware)
 
 app.include_router(auth_router)
+app.include_router(users_router)
+
+
+@app.exception_handler(InvalidCredentials)
+async def invalid_credentials(_request: Request, _exc: InvalidCredentials) -> JSONResponse:
+    return JSONResponse(status_code=401, content={"error": {
+        "code": "invalid_credentials", "message": "Invalid email or password.",
+    }})
+
+
+@app.exception_handler(AuthenticationRequired)
+async def authentication_required(_request: Request, _exc: AuthenticationRequired) -> JSONResponse:
+    return JSONResponse(status_code=401, content={"error": {
+        "code": "authentication_required", "message": "A valid session is required.",
+    }})
 
 
 @app.exception_handler(RequestValidationError)

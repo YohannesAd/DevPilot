@@ -15,6 +15,20 @@ from app import config, database
 from app.main import app
 
 
+@pytest.fixture(autouse=True)
+def isolated_auth_settings(monkeypatch):
+    # Never load private backend/.env, including when HTTP middleware initializes.
+    monkeypatch.setattr(config, "load_dotenv", lambda *args, **kwargs: None)
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setenv("FRONTEND_ORIGIN", "http://localhost:3000")
+    monkeypatch.setenv("API_ORIGIN", "http://localhost:8000")
+    config.get_auth_settings.cache_clear()
+    app.middleware_stack = None
+    yield
+    config.get_auth_settings.cache_clear()
+    app.middleware_stack = None
+
+
 @pytest.fixture(scope="session")
 def test_engine():
     value = os.environ.get("TEST_DATABASE_URL")
@@ -54,10 +68,10 @@ def test_engine():
 def clean_database(test_engine):
     # Only the guarded, disposable devpilot_test database is cleared.
     with test_engine.begin() as connection:
-        connection.execute(text("TRUNCATE TABLE users"))
+        connection.execute(text("TRUNCATE TABLE sessions, users"))
     yield test_engine
     with test_engine.begin() as connection:
-        connection.execute(text("TRUNCATE TABLE users"))
+        connection.execute(text("TRUNCATE TABLE sessions, users"))
 
 
 @pytest.fixture
@@ -68,7 +82,8 @@ def client(clean_database):
 
     app.dependency_overrides[database.get_db] = test_db
     try:
-        with TestClient(app) as test_client:
+        with TestClient(app, base_url="http://localhost:8000",
+                        headers={"Origin": "http://localhost:3000"}) as test_client:
             yield test_client
     finally:
         app.dependency_overrides.pop(database.get_db, None)

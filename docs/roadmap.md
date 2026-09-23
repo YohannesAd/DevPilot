@@ -4,8 +4,8 @@
 | --- | --- | --- |
 | 0 — Product and design | PRD, architecture, relationships, API sketch, screens | Complete |
 | 1 — Local vertical slice | Next.js page fetches FastAPI health route | Implemented; run locally to verify |
-| 2 — Persistence | PostgreSQL connection, ORM, Alembic first migration; users foundation implemented | Run migration and SQL persistence checks in README; API reads/writes deferred to account endpoints |
-| 3 — Accounts | Register, login, logout, session cookie and authorization tests | Second account cannot read private data |
+| 2 — Persistence | PostgreSQL connection, ORM, Alembic users migration | Applied and verified locally; isolated migration checks cover persistence |
+| 3 — Accounts | Backend registration, login, persistent sessions, current-user lookup, logout and Origin CSRF checks implemented; sessions migration awaits local application | Isolated tests cover credentials, cookies, expiration/revocation, current-user identity and CSRF; follow README for local verification. Resource ownership tests follow with projects/issues |
 | 4 — Projects | CRUD, archive, list, dashboard | State persists across refresh |
 | 5 — Issues | CRUD, type, priority, labels, comments | Ownership and relationships tested |
 | 6 — Board | Five columns, status editing and optional drag and drop | Status persists after reload |

@@ -22,7 +22,41 @@ The browser loads the Next.js interface and calls the FastAPI REST API. The API 
 
 ## Authentication and request path
 
-Registration validates email/password and stores a password hash. Login checks the hash, creates a server-side session with an expiring random token whose digest is stored in the database, and sends the raw token in a Secure, HttpOnly, SameSite cookie in production. Logout revokes the session. The backend resolves the session for each protected request and filters resource queries by owner; nested issue and comment endpoints verify the parent project's owner. Use a same-origin deployment or a controlled proxy for production cookies. During local development, the two localhost ports may use credentialed CORS with one exact frontend origin. The state-changing API uses an Origin check or CSRF token in addition to SameSite cookies. Session and password reset details will be finalized during the auth implementation.
+Registration validates email/password and stores an Argon2id hash. Login verifies
+that hash with a case-insensitive email lookup; nonexistent emails undergo a dummy
+Argon2 verification and receive the same generic 401 as incorrect passwords.
+Login creates a 256-bit random token, stores only its SHA-256 digest in PostgreSQL,
+and returns the token in an HttpOnly, SameSite=Lax, host-only cookie named
+`devpilot_session`, Path `/`. The fixed lifetime is seven days; each request checks
+database expiration and revocation. Logout revokes the presented session and clears
+the cookie. Re-login replaces only the session presented by that browser.
+
+Routes handle HTTP and public response schemas; `services/auth.py` owns credential
+verification and session persistence; `models.py` and `database.py` own ORM data and
+database connections. `dependencies.py` connects cookie authentication to protected
+routes. `security.py` owns cookie attributes, exact-origin CSRF enforcement and
+credentialed CORS. Auth responses are not cacheable. No table creation runs at API
+startup, and no raw tokens or password hashes are included in response bodies.
+
+All unsafe methods require one Origin equal to `FRONTEND_ORIGIN` or `API_ORIGIN`.
+Missing, null, duplicate and foreign origins are rejected with 403; there is no
+Referer fallback. This applies to register/login as well as authenticated writes
+such as logout, so login CSRF is covered. The check uses configured origins, never
+untrusted Host/forwarded headers. CORS allows credentials only for the exact
+frontend origin. See the [OWASP origin-check guidance](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html).
+
+Locally, use `http://localhost:3000` and `http://localhost:8000` together. Cookie
+Secure is false for this HTTP environment. Frontend fetch calls must later use
+`credentials: "include"`; SameSite=Lax works with these same-site localhost ports.
+Production uses `APP_ENV=production`, which enables Secure cookies and requires
+explicit HTTPS frontend/API origins without paths or trailing slashes. Deploy
+same-origin via a controlled proxy or use same-site HTTPS subdomains; unrelated
+cross-site domains are not supported by the Lax cookie policy. TLS termination
+must preserve the browser Origin. Password reset and rate limiting are future work.
+
+Current-user lookup resolves only the authenticated user's public fields. Future
+project/issue endpoints must additionally filter resources by owner and verify
+parent ownership; those endpoints and authorization rules are not implemented yet.
 
 Example: moving an issue sends `PATCH /api/projects/{project_id}/issues/{issue_id}` with a new status. FastAPI authenticates the user, checks project ownership and issue membership, validates the status, commits the change, and returns the updated issue. A page refresh fetches the stored value.
 

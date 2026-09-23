@@ -27,6 +27,14 @@ class PublicUser(BaseModel):
     updated_at: datetime
 
 
+class LoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    email: Annotated[EmailStr, Field(max_length=254)]
+    # Login accepts any nonempty bounded password; registration defines new-password policy.
+    password: Annotated[SecretStr, Field(min_length=1, max_length=128)]
+
+
 class ErrorDetail(BaseModel):
     code: str
     message: str

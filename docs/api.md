@@ -6,9 +6,9 @@ All routes use `/api`. Request and response bodies are JSON. IDs are UUIDs. Prot
 | --- | --- | --- |
 | GET | `/api/health` | Check API availability; implemented in milestone 1 |
 | POST | `/api/auth/register` | Register account; implemented |
-| POST | `/api/auth/login` | Start session |
-| POST | `/api/auth/logout` | Revoke session |
-| GET | `/api/users/me` | View profile |
+| POST | `/api/auth/login` | Start persistent session; implemented |
+| POST | `/api/auth/logout` | Revoke current session; implemented |
+| GET | `/api/users/me` | View current public profile; implemented |
 | GET, POST | `/api/projects` | List active projects, create project |
 | GET, PATCH | `/api/projects/{project_id}` | Read or edit project; PATCH can archive |
 | GET, POST | `/api/projects/{project_id}/issues` | List or create issues |
@@ -76,6 +76,62 @@ Invalid input or malformed JSON returns HTTP **422**:
 {"error":{"code":"validation_error","message":"Request body does not match the required schema."}}
 ```
 
-Validation errors deliberately omit input values, including passwords. Only the
-health and registration routes are currently implemented; the other routes above
-remain planned.
+Validation errors deliberately omit input values, including passwords.
+
+## Login, current user and logout (implemented)
+
+All unsafe requests (anything other than GET, HEAD, OPTIONS), including register,
+login and logout, require one exact trusted `Origin` header. Defaults are
+`http://localhost:3000` (frontend) and `http://localhost:8000` (API/Swagger).
+Missing, `null`, duplicate or untrusted origins return **403** before any write:
+
+```json
+{"error":{"code":"csrf_failed","message":"A trusted Origin header is required."}}
+```
+
+There is no Referer fallback. CLI clients must explicitly send the trusted Origin.
+Browsers supply it automatically for these requests. CORS allows credentials from
+the one configured frontend origin; it is not itself the CSRF check.
+
+`POST /api/auth/login` requires exactly `email` and `password`. Email validation
+matches registration and lookup ignores case. Password is a string of 1–128
+characters, unchanged; registration's minimum of 12 applies to creating passwords.
+Invalid schema returns the same sanitized **422** envelope as registration.
+
+```json
+{"email":"registration-check@example.com","password":"Local-test-password-2026!"}
+```
+
+Successful login returns **200** with the same five public user fields as
+registration (`id`, `email`, `display_name`, `created_at`, `updated_at`) and sets
+`devpilot_session`. This is an opaque, unpredictable token, not a user ID or JWT.
+The cookie is host-only (no Domain), Path `/`, HttpOnly, SameSite=Lax, and has
+Max-Age 604800 plus Expires. It is Secure in production, and not Secure for local
+HTTP development. Sessions have a fixed seven-day lifetime, without sliding
+renewal. A successful re-login creates a new token and revokes the cookie's old
+session, if present; other devices' sessions remain active.
+
+Unknown email and incorrect password both return **401**, with no new cookie:
+
+```json
+{"error":{"code":"invalid_credentials","message":"Invalid email or password."}}
+```
+
+`GET /api/users/me` takes no user ID. It resolves the cookie against PostgreSQL and
+returns **200** with only the current user's five public fields. Missing, malformed,
+unknown, expired or revoked session tokens return **401**:
+
+```json
+{"error":{"code":"authentication_required","message":"A valid session is required."}}
+```
+
+`POST /api/auth/logout` requires both a trusted Origin and a valid session cookie.
+It revokes only that session, clears the cookie using matching attributes, and
+returns **204** with no body. Replaying the old token returns 401. Logout with no
+valid session also returns 401; a failed CSRF check returns 403 without revocation.
+Auth and current-user responses carry `Cache-Control: no-store`.
+
+Use `http://localhost:3000` and `http://localhost:8000` together locally; do not mix
+`localhost` and `127.0.0.1` for browser URLs. PostgreSQL can still use `127.0.0.1`.
+Future frontend fetch calls must use `credentials: "include"` on login, current-user
+lookup and logout. No frontend authentication screens are implemented yet.
