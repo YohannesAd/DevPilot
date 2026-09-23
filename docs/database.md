@@ -26,4 +26,11 @@ Each project has exactly one owner. An issue belongs to exactly one project. A l
 
 `status` is one of `backlog`, `todo`, `in_progress`, `review`, `done`; `type` is `bug`, `feature`, `task`; `priority` is `low`, `medium`, `high`, `urgent`. Store timestamps in UTC. Generate IDs server-side. Keep authorship when archiving, and do not hard-delete a user who owns retained history. Foreign keys and indexes support project issue queries and session expiration.
 
-The first migration is intentionally postponed until we implement database connectivity. This document defines relationships and constraints before choosing exact ORM declarations.
+The first migration, `0001_create_users`, implements only `users`: a backend-generated
+UUID primary key, required `email` (up to 320 characters), `password_hash` (text),
+`display_name` (up to 100 characters), and required `created_at`/`updated_at`
+timestamps with time zone and database `now()` defaults. A unique expression index
+on `lower(email)` enforces case-insensitive uniqueness without an extension.
+SQLAlchemy updates `updated_at` on ORM writes; direct SQL updates must set it
+explicitly. Database sessions use UTC. Raw SQL inserts must supply a UUID.
+All other tables remain design-only. See the README for setup and SQL verification.

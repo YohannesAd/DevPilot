@@ -4,7 +4,7 @@
 | --- | --- | --- |
 | 0 — Product and design | PRD, architecture, relationships, API sketch, screens | Complete |
 | 1 — Local vertical slice | Next.js page fetches FastAPI health route | Implemented; run locally to verify |
-| 2 — Persistence | PostgreSQL connection, ORM, Alembic first migration | API reads/writes data after restart |
+| 2 — Persistence | PostgreSQL connection, ORM, Alembic first migration; users foundation implemented | Run migration and SQL persistence checks in README; API reads/writes deferred to account endpoints |
 | 3 — Accounts | Register, login, logout, session cookie and authorization tests | Second account cannot read private data |
 | 4 — Projects | CRUD, archive, list, dashboard | State persists across refresh |
 | 5 — Issues | CRUD, type, priority, labels, comments | Ownership and relationships tested |
