@@ -1,0 +1,20 @@
+.shell { min-height: 100svh; display: flex; flex-direction: column; overflow: clip; }
+.header { width: min(var(--page-width), calc(100% - 64px)); margin: 0 auto; min-height: 100px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-6); border-bottom: 1px solid var(--color-border); }
+.brand { display: inline-flex; align-items: center; gap: 11px; text-decoration: none; color: var(--color-text); font-weight: 700; font-size: 21px; letter-spacing: -.06em; }
+.brand svg { color: var(--color-accent); }
+.nav { display: flex; align-items: center; gap: 28px; }
+.nav > a { color: var(--color-muted); text-decoration: none; font-size: 13px; font-weight: 500; min-height: 44px; display: inline-flex; align-items: center; }
+.nav > a[aria-current="page"], .nav > a:hover { color: var(--color-text); }
+.nav .navAction { padding: 10px 16px; gap: 8px; color: var(--color-text); border: 1px solid var(--color-border); border-radius: var(--radius-control); }
+.content { width: min(var(--page-width), calc(100% - 64px)); margin: 0 auto; flex: 1; }
+.footer { display: flex; justify-content: space-between; align-items: center; gap: 20px; width: min(var(--page-width), calc(100% - 64px)); margin: 0 auto; padding: 26px 0; border-top: 1px solid var(--color-border); color: var(--color-muted); font-size: 12px; }
+.footer span:last-child { font-family: var(--font-mono); font-size: 10px; letter-spacing: .09em; text-transform: uppercase; }
+@media (max-width: 640px) {
+  .header, .content, .footer { width: calc(100% - 40px); }
+  .header { min-height: 80px; gap: 10px; }
+  .brand { font-size: 20px; gap: 8px; }
+  .nav { gap: 16px; }
+  .nav .homeLink { display: none; }
+  .nav .navAction { padding: 9px 12px; }
+  .footer { align-items: flex-start; flex-direction: column; gap: 6px; padding: 22px 0; }
+}

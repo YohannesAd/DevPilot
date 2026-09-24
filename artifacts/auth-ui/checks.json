@@ -1,0 +1,42 @@
+[
+  {
+    "page": "home",
+    "size": "desktop",
+    "violations": []
+  },
+  {
+    "page": "login",
+    "size": "desktop",
+    "violations": []
+  },
+  {
+    "page": "register",
+    "size": "desktop",
+    "violations": []
+  },
+  {
+    "page": "account",
+    "size": "desktop",
+    "violations": []
+  },
+  {
+    "page": "home",
+    "size": "mobile",
+    "violations": []
+  },
+  {
+    "page": "login",
+    "size": "mobile",
+    "violations": []
+  },
+  {
+    "page": "register",
+    "size": "mobile",
+    "violations": []
+  },
+  {
+    "page": "account",
+    "size": "mobile",
+    "violations": []
+  }
+]

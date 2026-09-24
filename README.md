@@ -4,7 +4,7 @@ DevPilot is a workspace for individual developers to organize projects and track
 
 ## First coding milestone
 
-This repository began with a small vertical slice: a FastAPI health endpoint and a Next.js page that fetches it. PostgreSQL persistence, registration, login, persistent sessions, current-user lookup and logout are now implemented in the backend. Authentication screens and issue tracking remain future work.
+This repository began with a small vertical slice: a FastAPI health endpoint and a Next.js page that fetches it. PostgreSQL persistence, registration, login, persistent sessions, current-user lookup and logout are now implemented. The frontend has a homepage, registration, login and signed-in account page. Project and issue tracking remain future work.
 
 ## Open in VS Code
 
@@ -236,8 +236,8 @@ For HTTPS deployment set `APP_ENV=production` and explicit HTTPS `FRONTEND_ORIGI
 and `API_ORIGIN` values, without trailing slashes. This enables Secure cookies and
 rejects HTTP origins. Use same-origin hosting/proxying or same-site HTTPS
 subdomains; unrelated cross-site frontend/API hosts are not supported. Future
-frontend requests need `credentials: "include"` for login, `/api/users/me`, and
-logout. No frontend auth screens are added here.
+frontend requests use `credentials: "include"` for login, `/api/users/me`, and
+logout through the shared `frontend/lib/api.ts` helper.
 
 ### Authentication tests (isolated PostgreSQL database)
 
@@ -288,7 +288,17 @@ cp .env.example .env.local           # Windows PowerShell: Copy-Item .env.exampl
 npm run dev
 ```
 
-Visit http://localhost:3000. The page should say **API connected** while the backend is running. Both apps run locally. PostgreSQL provides the database foundation; the health page still checks only API connectivity.
+Visit http://localhost:3000. The homepage links to `/register` and `/login`.
+Registration leads to login with a success message; login opens `/account`, which
+loads the current user's public profile and offers logout. Keep the backend running
+at `http://localhost:8000` and use `localhost` consistently for browser URLs.
+The health endpoint remains available at `http://localhost:8000/api/health`.
+
+Shared colors, typography, spacing and radii live in `frontend/app/styles.css`.
+Page/component styling uses CSS Modules; no UI framework is installed. The
+authentication forms share labeled fields, buttons, validation, loading and error
+states. Desktop/mobile screenshots and their review gallery are in
+`artifacts/auth-ui/`; the displayed Alex Morgan profile is fictional test data.
 
 ## Documentation
 
@@ -302,5 +312,5 @@ Visit http://localhost:3000. The page should say **API connected** while the bac
 ## Next step
 
 Review the sessions migration and verify login/current-user/logout using the steps
-above. Frontend auth screens, projects and issues remain future work.
+above, then review the frontend authentication flow. Projects and issues remain future work.
 See `docs/roadmap.md` for the build order.

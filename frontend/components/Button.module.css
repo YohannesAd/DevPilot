@@ -1,0 +1,6 @@
+.button { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-3); min-height: 48px; padding: 12px 22px; border: 1px solid transparent; border-radius: var(--radius-control); font-size: 14px; font-weight: 650; line-height: 1.4; text-decoration: none; background: var(--color-accent); color: var(--color-on-accent); transition: background .15s, border-color .15s; }
+.button:hover { background: var(--color-accent-hover); color: var(--color-on-accent); }
+.secondary { background: transparent; border-color: var(--color-border); color: var(--color-text); }
+.secondary:hover { background: var(--color-panel-raised); border-color: var(--color-muted); color: var(--color-text); }
+.button:disabled { opacity: .65; }
+.full { width: 100%; }

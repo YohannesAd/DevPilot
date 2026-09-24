@@ -1,0 +1,22 @@
+.layout { display: grid; grid-template-columns: 1fr 440px; gap: 100px; align-items: center; max-width: 1000px; margin: 0 auto; padding: 72px 0; min-height: 690px; }
+.story h1 { font-size: clamp(38px, 4vw, 52px); font-weight: 500; line-height: 1.1; margin: 22px 0; }
+.story h1 span { color: var(--color-accent); }
+.description { color: var(--color-muted); max-width: 360px; line-height: 1.8; }
+.storyArt { position: relative; width: 240px; height: 100px; margin: 32px 0 25px; display: flex; align-items: center; gap: 12px; }
+.storyArt::before { content: ""; position: absolute; width: 220px; height: 90px; border: 1px solid var(--color-border); border-radius: 50%; transform: rotate(-15deg); }
+.storyArt span { z-index: 1; display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid #3d536f; border-radius: 12px; background: var(--color-panel); color: var(--color-accent); font-family: var(--font-mono); font-size: 16px; }
+.storyArt span:nth-child(2) { background: var(--color-accent); color: var(--color-on-accent); transform: translateY(-13px); }
+.storyNote { color: var(--color-muted); font-size: 12px; padding-top: 16px; }
+.card { padding: 36px; background: var(--color-panel); border: 1px solid var(--color-border); border-radius: var(--radius-card); box-shadow: 0 20px 50px #0002; }
+.card h2 { font-size: 28px; font-weight: 550; margin-bottom: 8px; }
+.subtitle { color: var(--color-muted); font-size: 13px; margin-bottom: 28px; }
+.form { display: flex; flex-direction: column; gap: 20px; }
+.passwordTools { display: flex; align-items: center; gap: 9px; font-size: 12px; color: var(--color-muted); min-height: 44px; margin-top: -8px; }
+.passwordTools input { accent-color: var(--color-accent); width: 16px; height: 16px; }
+.switch { text-align: center; color: var(--color-muted); font-size: 13px; margin-top: 26px; padding-top: 24px; border-top: 1px solid var(--color-border); }
+.footnote { color: var(--color-muted); font-size: 11px; text-align: center; margin-top: 16px; }
+.message { padding: 12px 14px; border: 1px solid #65404c; border-radius: var(--radius-control); font-size: 13px; color: var(--color-error); background: var(--color-error-bg); margin-bottom: 20px; }
+.success { color: var(--color-success); border-color: #345b4c; background: var(--color-success-bg); }
+.loading { font-size: 13px; color: var(--color-muted); text-align: center; }
+@media (max-width: 900px) { .layout { gap: 40px; grid-template-columns: 1fr 400px; } .card { padding: 28px; } }
+@media (max-width: 700px) { .layout { grid-template-columns: 1fr; gap: 28px; padding: 38px 0 48px; min-height: auto; max-width: 440px; } .story h1 { font-size: 36px; margin: 14px 0; } .storyArt, .storyNote { display: none; } .description { font-size: 14px; } .card { padding: 26px 22px; } .card h2 { font-size: 26px; } .subtitle { margin-bottom: 24px; } }

@@ -133,5 +133,6 @@ Auth and current-user responses carry `Cache-Control: no-store`.
 
 Use `http://localhost:3000` and `http://localhost:8000` together locally; do not mix
 `localhost` and `127.0.0.1` for browser URLs. PostgreSQL can still use `127.0.0.1`.
-Future frontend fetch calls must use `credentials: "include"` on login, current-user
-lookup and logout. No frontend authentication screens are implemented yet.
+Frontend fetch calls use `credentials: "include"` on login, current-user lookup
+and logout. The `/register`, `/login` and `/account` frontend pages consume these
+endpoints; successful registration leads to login rather than creating a session.
