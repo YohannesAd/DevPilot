@@ -1,8 +1,21 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
 import SiteShell from "@/components/SiteShell";
 import { ButtonLink } from "@/components/Button";
 import styles from "./page.module.css";
 
 export default function Home() {
+  const router = useRouter();
+  useEffect(() => {
+    const controller = new AbortController();
+    api("/api/users/me", { signal: controller.signal }).then(() => {
+      if (!controller.signal.aborted) router.replace("/dashboard");
+    }).catch(() => { /* The public welcome page remains usable while signed out. */ });
+    return () => controller.abort();
+  }, [router]);
   return <SiteShell page="home">
     <section className={styles.hero}>
       <div className={styles.intro}>
@@ -27,7 +40,7 @@ export default function Home() {
     </section>
     <section className={styles.bottom} aria-labelledby="start-heading">
       <div><p className="eyebrow">Start with your space</p><h2 id="start-heading">One account. A fresh start.</h2></div>
-      <p>Create your DevPilot account today.<br />Project and issue tools are on the way.</p>
+      <p>Create your DevPilot account today.<br />Give your next project a place to grow.</p>
       <span className={styles.bottomMark} aria-hidden="true">↗</span>
     </section>
   </SiteShell>;

@@ -4,7 +4,7 @@ DevPilot is a workspace for individual developers to organize projects and track
 
 ## First coding milestone
 
-This repository began with a small vertical slice: a FastAPI health endpoint and a Next.js page that fetches it. PostgreSQL persistence, registration, login, persistent sessions, current-user lookup and logout are now implemented. The frontend has a homepage, registration, login and signed-in account page. Project and issue tracking remain future work.
+This repository began with a small vertical slice: a FastAPI health endpoint and a Next.js page that fetches it. PostgreSQL persistence, accounts, persistent sessions and private projects are now implemented. The frontend includes a welcome page, registration/login, dashboard, project creation/list/detail and account/logout. Project editing and archival, issues and boards remain future work.
 
 ## Open in VS Code
 
@@ -36,8 +36,9 @@ and the database `devpilot` owned by `devpilot_app`. Connecting in SQL Shell (ps
 and running `SELECT current_database(), current_user;` confirmed `devpilot` and
 `devpilot_app`. **Do not create this role or database again on this machine.**
 Alembic revision `0001_create_users` has been applied and verified in this local
-database. Login now requires the additive `0002_create_sessions` migration, which
-has not been applied to your local database by this implementation. Review it below.
+database. Login uses the additive `0002_create_sessions` migration. The Projects milestone
+adds `0003_create_projects`; it has not been applied to your local devpilot database.
+Review the project migration below before applying it.
 
 Other developers setting up a **new computer** must install and start PostgreSQL
 and create their own local role and database. Only on a new setup, connect as a
@@ -70,7 +71,7 @@ alembic current
 alembic check
 ```
 
-After upgrading, the current revision should be `0002_create_sessions (head)`, and `alembic check`
+After upgrading, the current revision should be `0003_create_projects (head)`, and `alembic check`
 should report no new upgrade operations. Migrations are explicit; starting the
 API never creates or modifies tables. The health route does not query the database.
 
@@ -243,7 +244,7 @@ logout through the shared `frontend/lib/api.ts` helper.
 
 Tests require an explicit `TEST_DATABASE_URL` for a local database named exactly
 `devpilot_test`. They never fall back to `DATABASE_URL` or read `backend/.env`.
-They apply both migrations and **clear the test sessions and users tables before and
+They apply all three migrations and **clear the test projects, sessions and users tables before and
 after each test**. Never use this database for data you want to keep.
 
 One-time setup for developers who do not yet have that test database: in Windows
@@ -289,8 +290,8 @@ npm run dev
 ```
 
 Visit http://localhost:3000. The homepage links to `/register` and `/login`.
-Registration leads to login with a success message; login opens `/account`, which
-loads the current user's public profile and offers logout. Keep the backend running
+Registration leads to login with a success message; login opens `/dashboard`
+(or restores a directly requested private page). `/account` shows the profile and logout. Keep the backend running
 at `http://localhost:8000` and use `localhost` consistently for browser URLs.
 The health endpoint remains available at `http://localhost:8000/api/health`.
 
@@ -311,6 +312,85 @@ states. Desktop/mobile screenshots and their review gallery are in
 
 ## Next step
 
-Review the sessions migration and verify login/current-user/logout using the steps
-above, then review the frontend authentication flow. Projects and issues remain future work.
+Review the new project migration below before applying it to devpilot, then verify
+the signed-in project flow. Project editing/archival, issues and boards remain future work.
 See `docs/roadmap.md` for the build order.
+
+## First signed-in project workspace
+
+Implemented: /dashboard, /projects and /projects/[id], using real authenticated
+API data. Create projects with a trimmed 1-100-character name and optional
+2,000-character description. Dashboard shows up to four newest projects; the
+full list pages through twenty at a time. Home and the logo lead to /dashboard
+while signed in; My account leads to /account. Signed-out visitors use /.
+Project access is enforced by the backend owner filter, not client navigation.
+
+### Review the project migration before applying locally
+
+Read backend/alembic/versions/0003_create_projects.py. It follows 0002 and only
+creates projects with an owner FK, bounded name/description, UTC timestamps,
+a nonblank-name check, and an owner/date/id index. It neither changes users or
+sessions nor modifies the old migrations. No startup command applies migrations.
+This implementation has not run 0003 against your devpilot database.
+
+After reviewing and approving the migration, stop the API, activate your existing
+virtual environment, and run from backend:
+
+```bash
+python -m alembic upgrade head
+python -m alembic current
+python -m alembic check
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+Expected revision: 0003_create_projects (head). Do not run downgrade on data you
+want to keep: downgrade to 0002 deletes projects, while preserving users/sessions.
+Projects cannot be saved or loaded on devpilot until this migration is applied.
+Use localhost for both browser/frontend and API URLs; keep credentials include,
+HttpOnly, SameSite=Lax and production Secure settings intact.
+
+### Acceptance checks
+
+Run the isolated PostgreSQL tests using TEST_DATABASE_URL for devpilot_test as
+described above: python -m pytest tests -q. The test harness refuses development
+targets and never loads backend/.env. Tests include project ownership, input
+validation, CSRF, fresh-connection persistence, logout/re-login and reversible
+migration checks. Build frontend with npm run build.
+
+Manual real-browser checks after applying the reviewed migration: sign in, see
+the empty dashboard, create a project, open its detail, refresh, log out, revisit
+its URL and sign in again. Verify the saved project returns. Use a second account
+to check that its list is empty and the first account's project URL is inaccessible.
+Check keyboard focus, field errors, retry states, long names/descriptions, paging,
+and desktop/mobile layouts. Browser checks are separate from API and build tests.
+
+Editing, archival, issues, boards and fabricated activity/statistics are excluded.
+
+Validation for this implementation: the full backend suite passed (76 tests) on
+a separate temporary PostgreSQL 18 cluster at loopback port 55432, database
+devpilot_test. Migration upgrade, downgrade and metadata checks passed there.
+The frontend production build passed. Test tooling emitted existing Starlette
+TestClient and Alembic configuration deprecation warnings. No real-browser
+acceptance or visual checks were possible because no browser was connected.
+The devpilot database was not migrated or used by these tests.
+
+### Files changed for the Projects milestone
+
+| Files | Responsibility |
+| --- | --- |
+| backend/alembic/versions/0003_create_projects.py | Additive project table, constraints and index |
+| backend/app/models.py | Project ORM model |
+| backend/app/routes/projects.py | Authenticated create/list/detail HTTP endpoints |
+| backend/app/schemas/projects.py | Strict input validation and public project/page schemas |
+| backend/app/services/projects.py | Owner-scoped queries and committed creation |
+| backend/app/main.py, backend/app/security.py | Route registration, project 404 envelope, private response caching policy |
+| backend/tests/test_projects.py, backend/tests/conftest.py | PostgreSQL project checks and isolated cleanup |
+| frontend/app/dashboard/page.tsx | Signed-in workspace home |
+| frontend/app/projects/page.tsx, frontend/app/projects/[id]/page.tsx | Project list/create composition and detail data flow |
+| frontend/components/Workspace.tsx, frontend/components/Workspace.module.css | Shared session gate, states and responsive workspace design |
+| frontend/components/ProjectList.tsx, frontend/components/ProjectForm.tsx | Reusable API-backed cards/pagination and creation form |
+| frontend/lib/projects.ts, frontend/lib/useApi.ts, frontend/lib/navigation.ts | Project contract, request lifecycle and safe login return paths |
+| frontend/components/SiteShell.tsx, frontend/components/SiteShell.module.css | Signed-in navigation and mobile wrapping |
+| frontend/components/AuthForm.tsx, frontend/app/page.tsx | Login destination and signed-in welcome-page redirect |
+| frontend/app/account/page.tsx, frontend/app/account/page.module.css | Shared session handling and workspace link |
+| README.md, docs/prd.md, docs/architecture.md, docs/database.md, docs/api.md, docs/wireframes.md, docs/roadmap.md | Implemented scope, contracts, migration review, verification and deferred V1 work |

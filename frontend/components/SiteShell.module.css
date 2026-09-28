@@ -11,10 +11,9 @@
 .footer span:last-child { font-family: var(--font-mono); font-size: 10px; letter-spacing: .09em; text-transform: uppercase; }
 @media (max-width: 640px) {
   .header, .content, .footer { width: calc(100% - 40px); }
-  .header { min-height: 80px; gap: 10px; }
+  .header { min-height: 100px; padding: 18px 0; gap: 8px; flex-wrap: wrap; }
   .brand { font-size: 20px; gap: 8px; }
-  .nav { gap: 16px; }
-  .nav .homeLink { display: none; }
+  .nav { gap: 20px; flex-wrap: wrap; }
   .nav .navAction { padding: 9px 12px; }
   .footer { align-items: flex-start; flex-direction: column; gap: 6px; padding: 22px 0; }
 }

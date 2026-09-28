@@ -68,10 +68,10 @@ def test_engine():
 def clean_database(test_engine):
     # Only the guarded, disposable devpilot_test database is cleared.
     with test_engine.begin() as connection:
-        connection.execute(text("TRUNCATE TABLE sessions, users"))
+        connection.execute(text("TRUNCATE TABLE projects, sessions, users"))
     yield test_engine
     with test_engine.begin() as connection:
-        connection.execute(text("TRUNCATE TABLE sessions, users"))
+        connection.execute(text("TRUNCATE TABLE projects, sessions, users"))
 
 
 @pytest.fixture

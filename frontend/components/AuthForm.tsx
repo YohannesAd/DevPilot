@@ -7,6 +7,7 @@ import SiteShell from "./SiteShell";
 import FormField from "./FormField";
 import { Button } from "./Button";
 import { api, ApiError, type PublicUser } from "@/lib/api";
+import { workspaceDestination } from "@/lib/navigation";
 import styles from "./AuthForm.module.css";
 
 export default function AuthForm({ mode }: { mode: "login" | "register" }) {
@@ -20,6 +21,13 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
   const errorRef = useRef<HTMLDivElement>(null);
   const submitting = useRef(false);
   useEffect(() => { setCreated(!register && new URLSearchParams(window.location.search).get("registered") === "1"); }, [register]);
+  useEffect(() => {
+    const controller = new AbortController();
+    api<PublicUser>("/api/users/me", { signal: controller.signal }).then(() => {
+      if (!controller.signal.aborted) router.replace(workspaceDestination(new URLSearchParams(window.location.search).get("next")));
+    }).catch(() => { /* Signed-out visitors can use the form. */ });
+    return () => controller.abort();
+  }, [router]);
   useEffect(() => { if (error) errorRef.current?.focus(); }, [error]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -40,7 +48,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
     try {
       await api<PublicUser>(`/api/auth/${mode}`, { method: "POST", body: JSON.stringify({ email, password, ...(register ? { display_name: name } : {}) }) });
       form.reset();
-      router.replace(register ? "/login?registered=1" : "/account");
+      router.replace(register ? "/login?registered=1" : workspaceDestination(new URLSearchParams(window.location.search).get("next")));
     } catch (err) {
       const code = err instanceof ApiError ? err.code : "";
       setError(code === "email_already_registered" ? "An account with this email already exists. Log in instead." : code === "invalid_credentials" ? "That email and password don’t match. Please try again." : code === "validation_error" ? "Please check your details and try again." : code === "csrf_failed" ? "This request couldn’t be verified. Refresh this page and try again." : "We couldn’t connect right now. Please try again in a moment.");

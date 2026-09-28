@@ -12,7 +12,7 @@ erDiagram
   USER ||--o{ COMMENT : writes
 ```
 
-Each project has exactly one owner. An issue belongs to exactly one project. A label belongs to one project and can tag many issues in that project. A comment belongs to one issue and records its author. An issue may optionally point to the project owner as assignee in V1; when collaboration is added, membership rules must replace this limitation. Every issue-label link must involve a label from the same project as its issue; the service enforces this and a future composite database constraint can reinforce it.
+Each project has exactly one owner. In the planned issue model, an issue belongs to exactly one project. A label belongs to one project and can tag many issues in that project. A comment belongs to one issue and records its author. An issue may optionally point to the project owner as assignee in V1; when collaboration is added, membership rules must replace this limitation. Every issue-label link must involve a label from the same project as its issue; the future issue service must enforce this, and a composite database constraint can reinforce it.
 
 | Table | Important columns and constraints |
 | --- | --- |
@@ -55,5 +55,28 @@ rows remain stored; no cleanup worker is included in this milestone.
 
 Upgrade creates the table and indexes without altering users. Downgrade to
 `0001_create_users` drops sessions and invalidates all logins while preserving
-users. Projects, issues and the other tables remain design-only.
+users. Issues and the other future tables remain design-only.
 See the README for setup and SQL verification.
+
+## Projects: migration 0003_create_projects
+
+Depends on 0002_create_sessions; neither old migration changes. Adds only:
+
+| Column | Definition |
+| --- | --- |
+| id | Backend-generated UUID primary key |
+| owner_id | Required UUID FK to users.id, without cascading deletion |
+| name | Required varchar(100), database check rejects blank space-only names |
+| description | Nullable varchar(2000); blank API input normalizes to null |
+| created_at, updated_at | Required timezone-aware timestamps, database now() defaults |
+
+The ix_projects_owner_created_id index covers owner_id, created_at and id.
+The API trims surrounding whitespace and rejects all-whitespace names. Duplicate
+names are allowed. ORM updates maintain updated_at; SQL callers must set it.
+The design table above describes eventual V1: archived_at is deferred until
+archival is implemented. No issue or board tables are added here.
+
+Upgrade preserves users and sessions. Downgrade to 0002 removes projects and all
+project data, preserving accounts and sessions. The new migration has not been
+applied to the user's devpilot database by this implementation. It is tested on
+an isolated disposable devpilot_test database.

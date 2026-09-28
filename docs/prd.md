@@ -33,3 +33,14 @@ Passwords are hashed with a modern password hasher. Session credentials use Http
 ## Deferred
 
 GitHub OAuth/API/webhooks, branches, commits, pull requests, AI, RAG, embeddings, pgvector, Redis, workers, organizations, roles, invitations, notifications, real-time updates, and advanced analytics. These belong to later milestones rather than V1 acceptance.
+
+## Implemented Projects milestone
+
+The first signed-in workspace supports creating, listing, and opening private
+projects. A project has a required name (1-100 characters after trimming) and an
+optional description (up to 2,000 characters). An empty workspace leads directly
+to Create project. Saved projects survive refresh, logout, and subsequent login.
+Only the owner can list or retrieve them, including through direct API calls.
+
+Editing, archival, issues, boards, labels, comments, and issue counts remain future
+V1 work. This milestone deliberately shows no placeholder activity or statistics.

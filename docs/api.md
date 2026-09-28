@@ -9,8 +9,9 @@ All routes use `/api`. Request and response bodies are JSON. IDs are UUIDs. Prot
 | POST | `/api/auth/login` | Start persistent session; implemented |
 | POST | `/api/auth/logout` | Revoke current session; implemented |
 | GET | `/api/users/me` | View current public profile; implemented |
-| GET, POST | `/api/projects` | List active projects, create project |
-| GET, PATCH | `/api/projects/{project_id}` | Read or edit project; PATCH can archive |
+| GET, POST | `/api/projects` | List own projects, create project; implemented |
+| GET | `/api/projects/{project_id}` | Read own project; implemented |
+| PATCH | `/api/projects/{project_id}` | Edit/archive; deferred |
 | GET, POST | `/api/projects/{project_id}/issues` | List or create issues |
 | GET, PATCH | `/api/projects/{project_id}/issues/{issue_id}` | Read or edit an issue; PATCH can archive |
 | GET, POST | `/api/projects/{project_id}/labels` | List or create project labels |
@@ -136,3 +137,35 @@ Use `http://localhost:3000` and `http://localhost:8000` together locally; do not
 Frontend fetch calls use `credentials: "include"` on login, current-user lookup
 and logout. The `/register`, `/login` and `/account` frontend pages consume these
 endpoints; successful registration leads to login rather than creating a session.
+
+## Projects (implemented)
+
+All three endpoints require the existing session. POST also requires the existing
+trusted Origin check. All project responses, including errors, use no-store.
+The frontend uses credentials: "include" for every request.
+
+POST /api/projects accepts exactly name and optional description. Name is a
+strict string, trimmed, 1-100 characters. Description is null or a strict string,
+trimmed, up to 2,000 characters; omitted/blank becomes null. Extra fields,
+including owner_id, are rejected. Duplicate names are allowed. Success is 201.
+
+Example request: {"name":"Portfolio","description":"A home for my work."}
+
+Public project responses contain exactly id (UUID), name, description (nullable),
+created_at and updated_at (UTC timestamps). Ownership is assigned from the session.
+
+GET /api/projects?limit=20&offset=0 returns 200 with
+{"items":[/* public projects */],"has_more":false}. The default limit is 20,
+allowed range 1-100; offset defaults to 0 and must be nonnegative. Results are
+ordered newest first by created_at then id. Empty results have items: [].
+Only the current owner's projects are returned, regardless of extra query fields.
+
+GET /api/projects/{project_id} returns 200 with one public project. Missing and
+foreign-owned IDs both return 404 with
+{"error":{"code":"project_not_found","message":"Project not found."}}.
+Malformed UUIDs, invalid bodies and invalid pagination return the existing 422
+validation_error envelope. Invalid sessions return 401; failed Origin checks 403.
+
+Login now opens /dashboard, or restores an allowlisted private next URL. Projects
+are available at /projects and /projects/[id]. Editing, deletion, archival,
+issue endpoints and summary statistics in the V1 sketch remain unimplemented.

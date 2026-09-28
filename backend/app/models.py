@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, Uuid, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, Uuid, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -48,4 +48,26 @@ class UserSession(Base):
         Index("uq_sessions_token_hash", "token_hash", unique=True),
         Index("ix_sessions_user_id", "user_id"),
         Index("ix_sessions_expires_at", "expires_at"),
+    )
+
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", name="fk_projects_owner_id_users"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(2000))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint("length(trim(name)) > 0", name="ck_projects_name_not_blank"),
+        Index("ix_projects_owner_created_id", "owner_id", "created_at", "id"),
     )

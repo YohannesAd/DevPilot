@@ -21,6 +21,7 @@
 .next > span { color: var(--color-accent); font-size: 30px; }
 .next h2 { font-size: 17px; font-weight: 550; margin-bottom: 6px; }
 .next p { font-size: 13px; color: var(--color-muted); }
+.next a { margin-top: 18px; }
 .state { max-width: 540px; margin: 90px auto; padding: 40px; background: var(--color-panel); border: 1px solid var(--color-border); border-radius: var(--radius-card); }
 .state p { color: var(--color-muted); margin: 16px 0 24px; }
 .error { color: var(--color-error); background: var(--color-error-bg); border: 1px solid #65404c; border-radius: var(--radius-control); padding: 12px; margin-bottom: 16px; font-size: 13px; }

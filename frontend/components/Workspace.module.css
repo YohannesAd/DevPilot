@@ -1,0 +1,54 @@
+.page { padding: 54px 0 72px; }
+.heading { display: flex; justify-content: space-between; align-items: center; gap: 28px; margin-bottom: 40px; }
+.heading > div { min-width: 0; }
+.heading h1 { font-size: clamp(32px, 4.4vw, 52px); margin: 12px 0 16px; overflow-wrap: anywhere; }
+.heading p:not(:global(.eyebrow)), .formPanel > p:not(:global(.eyebrow)) { color: var(--color-muted); }
+.heading > a, .heading > button { flex-shrink: 0; }
+.sectionHeading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.sectionHeading h2 { font-size: 23px; }
+.sectionHeading span { color: var(--color-muted); font-size: 12px; }
+.projectGrid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.projectCard { display: flex; flex-direction: column; min-height: 270px; height: 100%; padding: 28px; background: var(--color-panel); border: 1px solid var(--color-border); border-radius: var(--radius-card); text-decoration: none; color: var(--color-text); transition: border-color .15s, background .15s; }
+.projectCard:hover { background: var(--color-panel-raised); border-color: var(--color-accent); color: var(--color-text); }
+.cardTop { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; color: var(--color-accent); }
+.projectIcon { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid var(--color-border); border-radius: 12px; font-size: 22px; }
+.projectCard h2 { font-size: 24px; overflow-wrap: anywhere; margin-bottom: 12px; }
+.preview { color: var(--color-muted); font-size: 14px; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.date { margin-top: auto; padding-top: 24px; font-size: 12px; color: var(--color-muted); }
+.empty, .state { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; padding: 44px; border: 1px solid var(--color-border); border-radius: var(--radius-card); background: var(--color-panel); }
+.empty h2, .state h1 { font-size: clamp(26px, 4vw, 34px); }
+.empty > p:not(:global(.eyebrow)), .state p { color: var(--color-muted); max-width: 540px; }
+.mark { color: var(--color-accent); font-size: 36px; line-height: 1; }
+.state { margin: 48px 0; }
+.state > div { display: grid; gap: 22px; justify-items: start; }
+.loading { padding: 48px 0; color: var(--color-muted); }
+.listFooter { margin-top: 28px; }
+.pagination { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 28px; }
+.pagination span { color: var(--color-muted); font-size: 13px; }
+.pagination button:disabled { opacity: .5; cursor: default; }
+.formPanel { padding: 32px; margin-bottom: 32px; border: 1px solid var(--color-border); border-radius: var(--radius-card); background: var(--color-panel); scroll-margin-top: 24px; }
+.formPanel h2 { margin: 12px 0; font-size: 28px; }
+.form { max-width: 680px; margin-top: 28px; display: grid; gap: 24px; }
+.field { display: grid; gap: 9px; }
+.field label { font-size: 13px; font-weight: 500; }
+.field label span { font-weight: 400; color: var(--color-muted); }
+.field textarea { width: 100%; min-height: 120px; resize: vertical; padding: 14px; font: inherit; color: var(--color-text); background: var(--color-field); border: 1px solid var(--color-border); border-radius: var(--radius-control); }
+.field textarea::placeholder { color: var(--color-muted); }
+.hint { font-size: 12px; color: var(--color-muted); }
+.error { color: var(--color-error); font-size: 14px; }
+.actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.back { display: inline-block; margin-bottom: 28px; font-size: 14px; }
+.detail { padding: 36px; background: var(--color-panel); border: 1px solid var(--color-border); border-radius: var(--radius-card); }
+.detail h2 { font-size: 24px; margin-bottom: 22px; }
+.description { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 800px; }
+.metadata { display: flex; gap: 48px; margin: 32px 0 0; padding-top: 28px; border-top: 1px solid var(--color-border); flex-wrap: wrap; }
+.metadata dt { font-size: 12px; color: var(--color-muted); }
+.metadata dd { margin: 4px 0 0; font-size: 14px; }
+@media (max-width: 640px) {
+  .page { padding: 32px 0 48px; }
+  .heading { align-items: flex-start; flex-direction: column; gap: 22px; margin-bottom: 30px; }
+  .projectGrid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .projectCard { padding: 24px; min-height: 240px; }
+  .empty, .state, .formPanel, .detail { padding: 24px; }
+  .metadata { gap: 24px; }
+}

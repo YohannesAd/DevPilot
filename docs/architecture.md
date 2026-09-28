@@ -46,7 +46,7 @@ untrusted Host/forwarded headers. CORS allows credentials only for the exact
 frontend origin. See the [OWASP origin-check guidance](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html).
 
 Locally, use `http://localhost:3000` and `http://localhost:8000` together. Cookie
-Secure is false for this HTTP environment. Frontend fetch calls must later use
+Secure is false for this HTTP environment. Frontend fetch calls use
 `credentials: "include"`; SameSite=Lax works with these same-site localhost ports.
 Production uses `APP_ENV=production`, which enables Secure cookies and requires
 explicit HTTPS frontend/API origins without paths or trailing slashes. Deploy
@@ -54,9 +54,11 @@ same-origin via a controlled proxy or use same-site HTTPS subdomains; unrelated
 cross-site domains are not supported by the Lax cookie policy. TLS termination
 must preserve the browser Origin. Password reset and rate limiting are future work.
 
-Current-user lookup resolves only the authenticated user's public fields. Future
-project/issue endpoints must additionally filter resources by owner and verify
-parent ownership; those endpoints and authorization rules are not implemented yet.
+Current-user lookup resolves only the authenticated user's public fields.
+Project routes reuse this session dependency; services/projects.py filters every
+read by the session's user_id and assigns that owner when creating. Caller-supplied
+owner IDs are never used. Missing and foreign-owned projects both return 404.
+Future issue endpoints must also verify parent ownership.
 
 Example: moving an issue sends `PATCH /api/projects/{project_id}/issues/{issue_id}` with a new status. FastAPI authenticates the user, checks project ownership and issue membership, validates the status, commits the change, and returns the updated issue. A page refresh fetches the stored value.
 
@@ -67,3 +69,20 @@ Use 401 for unauthenticated calls, 404 for inaccessible or missing resources, 42
 ## Future boundaries
 
 GitHub adapters will live behind backend services; GitHub credentials stay on the server. AI analysis will consume project context through backend APIs. Repository indexing and workers arrive only when asynchronous processing is needed. Neither future area changes the V1 ownership rules.
+
+## Workspace implementation
+
+Project HTTP routes live in routes/projects.py, input/output contracts in
+schemas/projects.py, and queries/commits in services/projects.py. models.py owns
+the ORM definition; migration 0003 is additive. Project responses use no-store.
+Listing uses bounded limit/offset pagination ordered by created_at and id,
+newest first; the owner/date/id index supports that query. Offset pagination is
+not a snapshot: concurrent creation can shift page boundaries.
+
+The frontend Workspace component verifies /api/users/me before mounting private
+page content. The useApi hook handles aborts, loading, retries and 401 redirects.
+Direct private URLs are restored after login using an allowlisted internal next
+path. The server remains the authorization boundary. No identity or project data
+is stored in localStorage. ProjectList and ProjectForm share the API client,
+buttons, fields and CSS design tokens. The dashboard shows up to four actual
+projects; the full list uses twenty per page. Account reuses the workspace shell.
