@@ -11,7 +11,9 @@ All routes use `/api`. Request and response bodies are JSON. IDs are UUIDs. Prot
 | GET | `/api/users/me` | View current public profile; implemented |
 | GET, POST | `/api/projects` | List own projects, create project; implemented |
 | GET | `/api/projects/{project_id}` | Read own project; implemented |
-| PATCH | `/api/projects/{project_id}` | Edit/archive; deferred |
+| PATCH | `/api/projects/{project_id}` | Partially edit name/description; implemented |
+| POST | `/api/projects/{project_id}/archive` | Archive own project; implemented |
+| POST | `/api/projects/{project_id}/restore` | Restore own project; implemented |
 | GET, POST | `/api/projects/{project_id}/issues` | List or create issues |
 | GET, PATCH | `/api/projects/{project_id}/issues/{issue_id}` | Read or edit an issue; PATCH can archive |
 | GET, POST | `/api/projects/{project_id}/labels` | List or create project labels |
@@ -140,8 +142,9 @@ endpoints; successful registration leads to login rather than creating a session
 
 ## Projects (implemented)
 
-All three endpoints require the existing session. POST also requires the existing
-trusted Origin check. All project responses, including errors, use no-store.
+All project endpoints require the existing session. POST and PATCH require the
+existing trusted Origin check. CORS allows GET, POST, PATCH from the configured
+frontend origin with credentials. All project responses, including errors, use no-store.
 The frontend uses credentials: "include" for every request.
 
 POST /api/projects accepts exactly name and optional description. Name is a
@@ -152,20 +155,68 @@ including owner_id, are rejected. Duplicate names are allowed. Success is 201.
 Example request: {"name":"Portfolio","description":"A home for my work."}
 
 Public project responses contain exactly id (UUID), name, description (nullable),
-created_at and updated_at (UTC timestamps). Ownership is assigned from the session.
+created_at, updated_at, and archived_at (nullable UTC timestamp). Ownership is
+assigned from the session. Newly created projects have archived_at: null.
 
-GET /api/projects?limit=20&offset=0 returns 200 with
+GET /api/projects?status=active&limit=20&offset=0 returns 200 with
 {"items":[/* public projects */],"has_more":false}. The default limit is 20,
 allowed range 1-100; offset defaults to 0 and must be nonnegative. Results are
-ordered newest first by created_at then id. Empty results have items: [].
-Only the current owner's projects are returned, regardless of extra query fields.
+ordered newest first by created_at then id in both views; restoring does not change
+created_at. Status is exactly active (default) or archived. Active returns only
+archived_at IS NULL; archived returns only archived_at IS NOT NULL. Invalid status
+values return 422. Filtering happens before pagination, including has_more.
+Empty results have items: []. Only the current owner's projects are returned,
+regardless of extra query fields. Offset pagination is not a snapshot; concurrent
+creation, archiving, or restoring can shift page boundaries.
 
-GET /api/projects/{project_id} returns 200 with one public project. Missing and
+GET /api/projects/{project_id} returns 200 with one public project, including when
+archived. Missing and
 foreign-owned IDs both return 404 with
 {"error":{"code":"project_not_found","message":"Project not found."}}.
 Malformed UUIDs, invalid bodies and invalid pagination return the existing 422
 validation_error envelope. Invalid sessions return 401; failed Origin checks 403.
 
-Login now opens /dashboard, or restores an allowlisted private next URL. Projects
-are available at /projects and /projects/[id]. Editing, deletion, archival,
-issue endpoints and summary statistics in the V1 sketch remain unimplemented.
+### Partial edits
+
+`PATCH /api/projects/{project_id}` accepts at least one of `name` and `description`.
+Success returns 200 with the full saved public project.
+
+| Input | Meaning |
+| --- | --- |
+| Omitted field | Leave that field unchanged |
+| name string | Trim, require 1–100 characters |
+| name: null, blank, or non-string | 422; no changes saved |
+| description string | Trim, maximum 2,000 characters; blank normalizes to null |
+| description: null | Clear saved description |
+| Empty object or unsupported fields | 422; no changes saved |
+
+For example `{"name":"New name"}` preserves the description;
+`{"description":null}` clears only the description. Ownership, IDs, timestamps,
+and archive state cannot be patched. A no-op edit leaves updated_at unchanged.
+Edits to archived projects return **409**:
+
+```json
+{"error":{"code":"project_archived","message":"Restore this project before editing it."}}
+```
+
+### Archive and restore
+
+`POST /api/projects/{project_id}/archive` and
+`POST /api/projects/{project_id}/restore` each require an empty JSON object `{}`.
+Missing/null bodies or unsupported fields return 422. Both return 200 with the
+saved public project. Archive sets archived_at to server UTC time; restore clears
+it. A real transition updates updated_at, preserving created_at and all other data.
+Repeated actions when already in the requested state return the same project,
+without changing archived_at or updated_at. There is no hard-delete operation.
+
+Each write first finds the owner-scoped project with a row lock. Concurrent edits
+and state transitions are serialized so edits cannot bypass the archived-state
+check. Existing session and trusted-Origin rules apply unchanged. Missing or
+foreign-owned targets return the same 404, including archive/restore.
+
+Login opens /dashboard or restores an allowlisted private next URL. Projects are
+available at /projects and /projects/[id]; the Archived view is
+/projects?status=archived. Dashboard/default list request active projects.
+Issue endpoints and summary statistics in the V1 sketch remain unimplemented.
+These project management endpoints require migration 0004, which is tested in
+isolation but pending explicit approval for the local devpilot database.

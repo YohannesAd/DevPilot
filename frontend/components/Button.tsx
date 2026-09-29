@@ -1,8 +1,8 @@
 import Link from "next/link";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ComponentPropsWithRef, ReactNode } from "react";
 import styles from "./Button.module.css";
 
-type Props = ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode; variant?: "primary" | "secondary"; full?: boolean };
+type Props = ComponentPropsWithRef<"button"> & { children: ReactNode; variant?: "primary" | "secondary"; full?: boolean };
 export function Button({ children, variant = "primary", full, className = "", ...props }: Props) {
   return <button className={`${styles.button} ${variant === "secondary" ? styles.secondary : ""} ${full ? styles.full : ""} ${className}`} {...props}>{children}</button>;
 }

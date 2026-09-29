@@ -7,7 +7,7 @@ from app.routes.users import router as users_router
 from app.routes.projects import router as projects_router
 from app.security import SecurityMiddleware
 from app.services.auth import AuthenticationRequired, InvalidCredentials
-from app.services.projects import ProjectNotFound
+from app.services.projects import ProjectArchived, ProjectNotFound
 
 app = FastAPI(title="DevPilot API")
 
@@ -16,6 +16,13 @@ app.add_middleware(SecurityMiddleware)
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(projects_router)
+
+
+@app.exception_handler(ProjectArchived)
+async def project_archived(_request: Request, _exc: ProjectArchived) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"error": {
+        "code": "project_archived", "message": "Restore this project before editing it.",
+    }})
 
 
 @app.exception_handler(ProjectNotFound)

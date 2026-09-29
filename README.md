@@ -4,7 +4,7 @@ DevPilot is a workspace for individual developers to organize projects and track
 
 ## First coding milestone
 
-This repository began with a small vertical slice: a FastAPI health endpoint and a Next.js page that fetches it. PostgreSQL persistence, accounts, persistent sessions and private projects are now implemented. The frontend includes a welcome page, registration/login, dashboard, project creation/list/detail and account/logout. Project editing and archival, issues and boards remain future work.
+This repository began with a small vertical slice: a FastAPI health endpoint and a Next.js page that fetches it. PostgreSQL persistence, accounts, persistent sessions and private projects are now implemented. The frontend includes a welcome page, registration/login, dashboard, project creation/list/detail/edit/archive/restore and account/logout. Issues and boards remain future work. The new project management code requires migration `0004_project_archival`, which awaits explicit approval before application to local `devpilot`.
 
 ## Open in VS Code
 
@@ -37,8 +37,11 @@ and running `SELECT current_database(), current_user;` confirmed `devpilot` and
 `devpilot_app`. **Do not create this role or database again on this machine.**
 Alembic revision `0001_create_users` has been applied and verified in this local
 database. Login uses the additive `0002_create_sessions` migration. The Projects milestone
-adds `0003_create_projects`; it has not been applied to your local devpilot database.
-Review the project migration below before applying it.
+added `0003_create_projects`, which is applied to your local devpilot database.
+A read-only check confirmed revision `0003_create_projects` during this milestone.
+The new `0004_project_archival` migration has NOT been applied locally; review it
+below and obtain the user's explicit approval before applying it. The new code
+requires 0004, so a reload-enabled API can pick up code before its schema is ready.
 
 Other developers setting up a **new computer** must install and start PostgreSQL
 and create their own local role and database. Only on a new setup, connect as a
@@ -62,7 +65,7 @@ or put it in tracked source files. URL-encode special characters in credentials
 An existing `DATABASE_URL` environment variable takes precedence over `.env`.
 Use a local development database for these instructions.
 
-After reviewing the configuration and migration, run the following from
+For a new database, after reviewing the configuration and migrations, run from
 `backend`, with its virtual environment active:
 
 ```bash
@@ -71,7 +74,7 @@ alembic current
 alembic check
 ```
 
-After upgrading, the current revision should be `0003_create_projects (head)`, and `alembic check`
+After upgrading, the current revision should be `0004_project_archival (head)`, and `alembic check`
 should report no new upgrade operations. Migrations are explicit; starting the
 API never creates or modifies tables. The health route does not query the database.
 
@@ -244,7 +247,7 @@ logout through the shared `frontend/lib/api.ts` helper.
 
 Tests require an explicit `TEST_DATABASE_URL` for a local database named exactly
 `devpilot_test`. They never fall back to `DATABASE_URL` or read `backend/.env`.
-They apply all three migrations and **clear the test projects, sessions and users tables before and
+They apply all four migrations and **clear the test projects, sessions and users tables before and
 after each test**. Never use this database for data you want to keep.
 
 One-time setup for developers who do not yet have that test database: in Windows
@@ -312,42 +315,72 @@ states. Desktop/mobile screenshots and their review gallery are in
 
 ## Next step
 
-Review the new project migration below before applying it to devpilot, then verify
-the signed-in project flow. Project editing/archival, issues and boards remain future work.
+Review and explicitly approve migration 0004 before applying it to devpilot, then
+verify the signed-in edit/archive/restore flow. Issues and boards remain future work.
 See `docs/roadmap.md` for the build order.
 
 ## First signed-in project workspace
 
 Implemented: /dashboard, /projects and /projects/[id], using real authenticated
-API data. Create projects with a trimmed 1-100-character name and optional
-2,000-character description. Dashboard shows up to four newest projects; the
-full list pages through twenty at a time. Home and the logo lead to /dashboard
+API data. Create and edit projects with a trimmed 1-100-character name and optional
+2,000-character description. Dashboard shows up to four newest active projects;
+the full list pages through twenty at a time. Active is the default; the Archived
+view is at /projects?status=archived. Home and the logo lead to /dashboard
 while signed in; My account leads to /account. Signed-out visitors use /.
 Project access is enforced by the backend owner filter, not client navigation.
 
-### Review the project migration before applying locally
+### Applied project foundation migration
 
 Read backend/alembic/versions/0003_create_projects.py. It follows 0002 and only
 creates projects with an owner FK, bounded name/description, UTC timestamps,
 a nonblank-name check, and an owner/date/id index. It neither changes users or
 sessions nor modifies the old migrations. No startup command applies migrations.
-This implementation has not run 0003 against your devpilot database.
+Migration 0003 has been applied to local devpilot. The previous save failure was
+caused by its missing projects table and was resolved when 0003 was applied.
 
-After reviewing and approving the migration, stop the API, activate your existing
-virtual environment, and run from backend:
+### Review migration 0004 before applying locally
+
+Read [0004_project_archival.py](backend/alembic/versions/0004_project_archival.py).
+Upgrade adds only nullable `projects.archived_at` (`timestamp with time zone`),
+without a default. Existing projects receive NULL and remain active. Project IDs,
+owners, names, descriptions, other timestamps, users, and sessions are preserved.
+No old migration is modified, and no hard deletion is added.
+
+Downgrade to 0003 drops only this column: project rows remain, but archive
+timestamps are lost and all projects become active if upgraded again. Downgrading
+further to 0002 deletes all projects. No development downgrade is planned.
+
+**0004 is pending explicit user approval for local devpilot.** It has only been
+applied and reversed in a disposable test database. The new API requires the
+column; do not run the new code against the old schema. Only after approval,
+stop the API, activate the existing virtual environment, and run from backend:
 
 ```bash
-python -m alembic upgrade head
+python -m alembic upgrade 0004_project_archival
 python -m alembic current
 python -m alembic check
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
-Expected revision: 0003_create_projects (head). Do not run downgrade on data you
-want to keep: downgrade to 0002 deletes projects, while preserving users/sessions.
-Projects cannot be saved or loaded on devpilot until this migration is applied.
+Expected revision after approval/application: 0004_project_archival (head).
+Before that, the current local revision remains 0003 and `alembic check` will
+report an outstanding upgrade; this is expected.
 Use localhost for both browser/frontend and API URLs; keep credentials include,
 HttpOnly, SameSite=Lax and production Secure settings intact.
+
+### Project management behavior
+
+Edit opens with saved values. Omitted fields in a PATCH stay unchanged; explicit
+null or blank description clears it. Names cannot be null or blank. Unsupported
+fields and ownership changes are rejected. Recoverable failures retain form edits;
+successful saves display the returned saved data and a success message.
+
+Archive requires a confirmation explaining that data is preserved. Archived
+projects leave the dashboard/default list, remain accessible in the explicit
+Archived view, and have a prominent archived notice on detail. Restore returns
+them to active lists. Editing archived projects is blocked in both UI and API.
+Repeated archive/restore requests preserve timestamps if already in that state.
+No project deletion endpoint exists. See the API contract for exact bodies.
 
 ### Acceptance checks
 
@@ -364,15 +397,57 @@ to check that its list is empty and the first account's project URL is inaccessi
 Check keyboard focus, field errors, retry states, long names/descriptions, paging,
 and desktop/mobile layouts. Browser checks are separate from API and build tests.
 
-Editing, archival, issues, boards and fabricated activity/statistics are excluded.
+Issues, boards, labels, comments, issue statistics, and unrelated hydration-warning
+work are excluded from this milestone.
 
-Validation for this implementation: the full backend suite passed (76 tests) on
+Historical validation for the first project workspace: the backend suite passed (76 tests) on
 a separate temporary PostgreSQL 18 cluster at loopback port 55432, database
 devpilot_test. Migration upgrade, downgrade and metadata checks passed there.
 The frontend production build passed. Test tooling emitted existing Starlette
 TestClient and Alembic configuration deprecation warnings. No real-browser
 acceptance or visual checks were possible because no browser was connected.
-The devpilot database was not migrated or used by these tests.
+Those tests did not use devpilot. Its 0003 migration was applied separately later.
+
+Current project-management validation: `python -m pytest tests -q` passed with
+**101 passed, 14 warnings in 25.55s**, using a fresh PostgreSQL 18 test cluster on
+loopback port 55432 and database `devpilot_test`. Warnings are existing Starlette
+TestClient and Alembic configuration deprecations. `npm run build` passed, including
+TypeScript checks and generation of all nine static pages. A first build caught
+a Button ref typing issue that was fixed before the successful build.
+
+No browser was connected during this milestone. The baseline “Hiwot fit app”
+journey and desktop/mobile/keyboard checks could not be performed. No such project
+was created or modified through a substitute HTTP/database check. API tests are
+not browser verification. Automated tests never used development data.
+
+After approved migration application, perform these real-browser checks:
+
+1. Find “Hiwot fit app”; reuse it unchanged if present, otherwise create it once.
+   Open, refresh, sign out/in, and reopen it to verify the baseline journey.
+2. On a separate disposable project, edit → refresh → archive → Archived view →
+   restore → sign out/in. Verify persisted names/descriptions and archive states.
+3. Cancel archive; check Tab/Shift+Tab containment, Escape, initial focus on Keep
+   active, return focus after closing, and focus/announcements after success/error.
+4. Check active/archived empty states, pagination, archived detail/Restore,
+   validation, recoverable errors retaining edits, expired sessions, and a second
+   account's inability to access the first account's projects.
+5. Check desktop/mobile layouts, long content, labels, and visible keyboard focus.
+
+### Files changed for project management
+
+| Files | Responsibility |
+| --- | --- |
+| backend/alembic/versions/0004_project_archival.py | Nullable archive timestamp; reversible schema change |
+| backend/app/models.py, schemas/projects.py | ORM state, strict partial edits/actions, public archive state |
+| backend/app/services/projects.py, routes/projects.py | Owner-scoped locked writes, filtering, lifecycle endpoints |
+| backend/app/main.py, security.py | Archived-edit 409 envelope and PATCH CORS support |
+| backend/tests/test_projects.py, test_project_management.py | Public contract and lifecycle/migration/security coverage |
+| frontend/lib/projects.ts | Typed edits, archive and restore requests |
+| frontend/components/ProjectForm.tsx, ProjectList.tsx | Prefilled edit form, saved values, filtered lists and empty states |
+| frontend/components/ProjectDetail.tsx, ConfirmDialog.tsx | Management actions, feedback, archived detail, native modal focus |
+| frontend/components/Button.tsx, Workspace.module.css | Ref support and responsive styling with existing tokens |
+| frontend/app/projects/page.tsx, projects/[id]/page.tsx | Active/Archived navigation and detail composition |
+| README.md, docs/api.md, database.md, roadmap.md, prd.md, architecture.md, wireframes.md | Current contracts, migration status, verification and scope |
 
 ### Files changed for the Projects milestone
 

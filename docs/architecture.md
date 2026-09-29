@@ -64,7 +64,7 @@ Example: moving an issue sends `PATCH /api/projects/{project_id}/issues/{issue_i
 
 ## Failure and security behavior
 
-Use 401 for unauthenticated calls, 404 for inaccessible or missing resources, 422 for invalid input, and 409 for uniqueness conflicts. Return `{ "error": { "code": "...", "message": "..." } }` for expected API failures. Do not expose raw exception or secret text. Parameterized ORM queries, bounded fields, secure cookie settings, explicit CORS origins, and server-side ownership checks are required. Add database indexes on owner/project/status paths after observing actual queries.
+Use 401 for unauthenticated calls, 404 for inaccessible or missing resources, 422 for invalid input, and 409 for uniqueness or resource-state conflicts. Return `{ "error": { "code": "...", "message": "..." } }` for expected API failures. Do not expose raw exception or secret text. Parameterized ORM queries, bounded fields, secure cookie settings, explicit CORS origins, and server-side ownership checks are required. Add database indexes on owner/project/status paths after observing actual queries.
 
 ## Future boundaries
 
@@ -74,10 +74,16 @@ GitHub adapters will live behind backend services; GitHub credentials stay on th
 
 Project HTTP routes live in routes/projects.py, input/output contracts in
 schemas/projects.py, and queries/commits in services/projects.py. models.py owns
-the ORM definition; migration 0003 is additive. Project responses use no-store.
+the ORM definition; migration 0003 creates projects and 0004 adds nullable
+archived_at. Project responses use no-store.
 Listing uses bounded limit/offset pagination ordered by created_at and id,
 newest first; the owner/date/id index supports that query. Offset pagination is
-not a snapshot: concurrent creation can shift page boundaries.
+not a snapshot: concurrent creation/archive/restore can shift page boundaries.
+Active/archived filtering occurs before pagination. Every mutation first locks
+the owner-scoped row, serializing edits and archive transitions. The service
+rejects edits while archived and makes repeated transitions no-ops. Partial edits
+use only explicitly provided fields; public schemas never expose ownership.
+PATCH is allowed by CORS while retaining the exact-Origin checks on every write.
 
 The frontend Workspace component verifies /api/users/me before mounting private
 page content. The useApi hook handles aborts, loading, retries and 401 redirects.
@@ -85,4 +91,16 @@ Direct private URLs are restored after login using an allowlisted internal next
 path. The server remains the authorization boundary. No identity or project data
 is stored in localStorage. ProjectList and ProjectForm share the API client,
 buttons, fields and CSS design tokens. The dashboard shows up to four actual
-projects; the full list uses twenty per page. Account reuses the workspace shell.
+active projects; the full list uses twenty per page. Account reuses the workspace shell.
+ProjectForm shares create/edit validation and retains unsaved input on recoverable
+errors. ProjectDetail owns mutation state and displays only server-returned saved
+values. Project pages focus on routing/data fetching. ConfirmDialog uses native
+showModal for focus containment, starts on Keep active, supports Escape before
+submission, and returns focus on close. The Archived view is URL-addressable and
+resets pagination when switching views. No drafts or private project data are
+stored in browser storage.
+
+Local 0003 is applied; 0004 is tested only in isolation and awaits explicit user
+approval for devpilot. New project code requires the new column. No browser was
+connected for interaction, accessibility, or visual acceptance; those checks are
+still pending even though backend tests and the production build passed.

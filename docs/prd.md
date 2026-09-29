@@ -9,7 +9,7 @@ Individual developers track project work across notes and code hosting, which ma
 | Area | Required behavior |
 | --- | --- |
 | Accounts | Register, log in, log out, view profile, protect private data |
-| Projects | Create, list, edit, archive, view dashboard |
+| Projects | Create, list, edit, archive, restore, view dashboard |
 | Issues | Create, edit, archive; classify as bug, feature, or task; set priority and status |
 | Organization | Add project labels, optionally assign an issue to its owner, add and read comments |
 | Workflow | View five status columns, change status, persist changes across refresh |
@@ -42,5 +42,15 @@ optional description (up to 2,000 characters). An empty workspace leads directly
 to Create project. Saved projects survive refresh, logout, and subsequent login.
 Only the owner can list or retrieve them, including through direct API calls.
 
-Editing, archival, issues, boards, labels, comments, and issue counts remain future
-V1 work. This milestone deliberately shows no placeholder activity or statistics.
+Project management now implements editing, archiving, and restoring. Archived
+projects leave active lists/dashboard, remain readable by their owner, and appear
+in an explicit Archived view. Restore is required before editing and returns them
+to active lists. Archive confirmation explains that data is preserved. Repeated
+archive/restore requests are safe no-ops. Partial edits preserve omitted fields;
+an explicit null description clears it. Forms retain edits after recoverable errors.
+
+This code requires new migration 0004, pending explicit approval for local devpilot;
+0003 is already applied. Isolated backend tests and production build passed;
+browser acceptance remains unverified because no browser was connected.
+Issues, boards, labels, comments, and issue counts remain future V1 work. This
+milestone deliberately shows no placeholder activity or statistics.

@@ -31,7 +31,8 @@ def test_create_read_persist_and_relogin(client, owner, clean_database):
     response = client.post("/api/projects", json={"name": "  First project  ", "description": "  A real idea\nNext step  "})
     assert response.status_code == 201
     project = response.json()
-    assert set(project) == {"id", "name", "description", "created_at", "updated_at"}
+    assert set(project) == {"id", "name", "description", "created_at", "updated_at", "archived_at"}
+    assert project["archived_at"] is None
     assert project["name"] == "First project" and project["description"] == "A real idea\nNext step"
     assert response.headers["cache-control"] == "no-store"
     project_id = UUID(project["id"])

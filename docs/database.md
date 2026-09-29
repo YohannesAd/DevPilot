@@ -73,10 +73,36 @@ Depends on 0002_create_sessions; neither old migration changes. Adds only:
 The ix_projects_owner_created_id index covers owner_id, created_at and id.
 The API trims surrounding whitespace and rejects all-whitespace names. Duplicate
 names are allowed. ORM updates maintain updated_at; SQL callers must set it.
-The design table above describes eventual V1: archived_at is deferred until
-archival is implemented. No issue or board tables are added here.
+Migration 0003 does not include archived_at; the new 0004 migration adds it.
+No issue or board tables are added here.
 
 Upgrade preserves users and sessions. Downgrade to 0002 removes projects and all
-project data, preserving accounts and sessions. The new migration has not been
-applied to the user's devpilot database by this implementation. It is tested on
-an isolated disposable devpilot_test database.
+project data, preserving accounts and sessions. Migration 0003 HAS been applied
+to the user's local devpilot database, confirmed with a read-only revision check.
+Previous documentation saying it was pending was stale.
+
+## Project management: migration 0004_project_archival
+
+Depends on 0003; old migration files remain unchanged. Upgrade adds only
+`projects.archived_at`, nullable `timestamp with time zone`, with no default.
+All existing rows start active (NULL). Existing IDs, ownership, names,
+descriptions, created_at, updated_at, accounts, and sessions remain unchanged.
+No additional index is introduced; owner/date/id still supports the ordered list.
+
+Archive sets archived_at to the server's UTC time. Restore sets it to NULL.
+ORM writes update updated_at only when values change; repeated archive/restore
+requests leave both timestamps unchanged. Services lock the owner-scoped row
+before editing or transitioning it. Archived projects cannot be edited until
+restored. Listing filters active/archived before applying limit/offset.
+
+Downgrade to 0003 drops only archived_at. It preserves all rows and other fields,
+but archive timestamps are irrecoverably lost; a later upgrade treats every
+project as active. Use matching older application code if downgrading. Further
+downgrade to 0002 deletes projects and is not part of this milestone.
+
+Status: 0004 has been upgraded/downgraded only in a disposable PostgreSQL database
+named devpilot_test. **Not applied to local devpilot; explicit user approval is
+required.** The new application code requires 0004 before serving project requests.
+Tests verify schema/metadata agreement and preservation of project rows, ownership,
+timestamps, users, and sessions across downgrade/upgrade. Automated tests do not
+use the development database.
