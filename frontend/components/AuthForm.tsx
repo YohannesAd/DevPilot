@@ -22,11 +22,17 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
   const submitting = useRef(false);
   useEffect(() => { setCreated(!register && new URLSearchParams(window.location.search).get("registered") === "1"); }, [register]);
   useEffect(() => {
-    const controller = new AbortController();
-    api<PublicUser>("/api/users/me", { signal: controller.signal }).then(() => {
-      if (!controller.signal.aborted) router.replace(workspaceDestination(new URLSearchParams(window.location.search).get("next")));
-    }).catch(() => { /* Signed-out visitors can use the form. */ });
-    return () => controller.abort();
+    // Ignore stale results after Strict Mode cleanup or navigation. This small
+    // session GET can finish without aborting its fetch/response body on unmount.
+    let active = true;
+    api<PublicUser>("/api/users/me").then(() => {
+      if (active) router.replace(workspaceDestination(new URLSearchParams(window.location.search).get("next")));
+    }).catch(err => {
+      if (!active) return;
+      if (err instanceof ApiError && err.status === 401) return; // Expected while signed out.
+      setError("We couldn’t check your session or open your workspace. Refresh the page to try again.");
+    });
+    return () => { active = false; };
   }, [router]);
   useEffect(() => { if (error) errorRef.current?.focus(); }, [error]);
 

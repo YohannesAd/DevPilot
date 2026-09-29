@@ -10,16 +10,18 @@ export function useApi<T>(path: string) {
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<{ path: string; data?: T; error?: ApiError }>({ path: "" });
   useEffect(() => {
-    const controller = new AbortController();
+    // Let the GET finish, but ignore results from an obsolete effect instance.
+    // This also covers Strict Mode replay, path changes, retries and unmounts.
+    let active = true;
     setResult({ path });
-    api<T>(path, { signal: controller.signal }).then(data => {
-      if (!controller.signal.aborted) setResult({ path, data });
+    api<T>(path).then(data => {
+      if (active) setResult({ path, data });
     }).catch(error => {
-      if (controller.signal.aborted) return;
+      if (!active) return;
       if (error instanceof ApiError && error.status === 401) router.replace(loginDestination());
       else setResult({ path, error });
     });
-    return () => controller.abort();
+    return () => { active = false; };
   }, [path, attempt, router]);
   const current = result.path === path ? result : { path };
   return { ...current, loading: current.data === undefined && !current.error,

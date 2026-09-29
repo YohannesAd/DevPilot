@@ -1,20 +1,25 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import SiteShell from "@/components/SiteShell";
 import { ButtonLink } from "@/components/Button";
 import styles from "./page.module.css";
 
 export default function Home() {
   const router = useRouter();
+  const [sessionError, setSessionError] = useState("");
   useEffect(() => {
-    const controller = new AbortController();
-    api("/api/users/me", { signal: controller.signal }).then(() => {
-      if (!controller.signal.aborted) router.replace("/dashboard");
-    }).catch(() => { /* The public welcome page remains usable while signed out. */ });
-    return () => controller.abort();
+    let active = true;
+    api("/api/users/me").then(() => {
+      if (active) router.replace("/dashboard");
+    }).catch(err => {
+      if (!active) return;
+      if (err instanceof ApiError && err.status === 401) return;
+      setSessionError("We couldn’t check your session or open your workspace. Refresh the page to try again.");
+    });
+    return () => { active = false; };
   }, [router]);
   return <SiteShell page="home">
     <section className={styles.hero}>
@@ -24,6 +29,7 @@ export default function Home() {
         <p className={styles.description}>A calmer home for your development work. Bring your ideas, find your focus, and make room for what’s next.</p>
         <div className={styles.actions}><ButtonLink href="/register">Create your account <span aria-hidden="true">↗</span></ButtonLink><ButtonLink href="/login" variant="secondary">Welcome back</ButtonLink></div>
         <p className={styles.note}>Your ideas deserve a place to land.</p>
+        {sessionError && <p role="alert">{sessionError}</p>}
       </div>
       <div className={styles.visual} aria-label="An illustration of a focused development workspace">
         <div className={styles.orbit} aria-hidden="true" />
