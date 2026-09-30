@@ -8,6 +8,7 @@ import { projectDate } from "@/lib/projects";
 import { issueCollectionPath, issueHref, ISSUE_PAGE_SIZE, ISSUE_TYPES, ISSUE_STATUSES, ISSUE_PRIORITIES, type IssuePage } from "@/lib/issues";
 import { Button } from "./Button";
 import IssueForm from "./IssueForm";
+import LabelBadges from "./LabelBadges";
 import workspace from "./Workspace.module.css";
 import styles from "./Issues.module.css";
 
@@ -42,6 +43,7 @@ export default function ProjectIssues({ projectId, archived }: { projectId: stri
         <ul className={styles.list}>{data.items.map(issue => <li key={issue.id}>
           <Link href={issueHref(projectId, issue.id)} className={styles.card}>
             <h3>{issue.title}</h3>
+            <LabelBadges labels={issue.labels} />
             <div className={styles.attributes}><span>Type: {ISSUE_TYPES[issue.type]}</span><span>Status: {ISSUE_STATUSES[issue.status]}</span><span>Priority: {ISSUE_PRIORITIES[issue.priority]}</span></div>
             <p className={styles.date}>Created <time dateTime={issue.created_at}>{projectDate(issue.created_at)}</time></p>
           </Link>

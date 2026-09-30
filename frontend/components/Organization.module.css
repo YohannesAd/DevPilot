@@ -1,0 +1,22 @@
+.section { margin-top: 32px; display: grid; gap: 22px; }
+.heading, .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.heading { justify-content: space-between; }
+.list { list-style: none; padding: 0; margin: 0; display: grid; gap: 18px; }
+.item { padding: 24px; border: 1px solid var(--color-border); border-radius: var(--radius-card); background: var(--color-panel); display: grid; gap: 16px; }
+.meta { font-size: 13px; color: var(--color-muted); display: flex; gap: 12px; flex-wrap: wrap; }
+.body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.form { display: grid; gap: 14px; max-width: 680px; }
+.form :is(input, textarea, select) { width: 100%; padding: 14px; font: inherit; color: var(--color-text); background: var(--color-field); border: 1px solid var(--color-border); border-radius: var(--radius-control); }
+.form textarea { min-height: 120px; resize: vertical; }
+.section :is(input, textarea, select, button, a):focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+.section :disabled { opacity: .6; }
+.hint { color: var(--color-muted); font-size: 14px; }
+.error { color: var(--color-error); }
+.badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.badge { display: inline-block; border-radius: var(--radius-control); padding: 4px 10px; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; background: #dbeafe; color: #172554; border: 1px solid currentColor; }
+.badge[data-color="green"] { background: #dcfce7; color: #14532d; }
+.badge[data-color="amber"] { background: #fef3c7; color: #78350f; }
+.badge[data-color="purple"] { background: #ede9fe; color: #4c1d95; }
+.badge[data-color="rose"] { background: #ffe4e6; color: #881337; }
+.badge[data-color="slate"] { background: #e2e8f0; color: #1e293b; }
+@media(max-width: 640px) { .item { padding: 18px; } .actions { align-items: stretch; } }

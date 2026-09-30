@@ -106,8 +106,8 @@ submission, and returns focus on close. The Archived view is URL-addressable and
 resets pagination when switching views. No drafts or private project data are
 stored in browser storage.
 
-Local migrations through 0005 are approved and applied. Alembic reports
-0005_create_issues (head) and no new upgrade operations. No browser was
+Local migrations through 0006 are approved and applied. Alembic reports
+0006_comments_labels (head) and no new upgrade operations. No browser was
 connected for interaction, accessibility, or visual acceptance; those checks are
 still pending even though backend tests and the production build passed.
 
@@ -171,3 +171,36 @@ Effect generations ignore obsolete results on Strict Mode replay, route changes,
 archival-state remounts and unmount. Cleanup does not abort fetch. Archived boards
 disable all movement; a server 409 also blocks stale active controls and explains
 restoration. Backend ownership/session/CSRF/archive locks remain unchanged.
+
+## Comments and labels
+
+Organization routes/schemas/services keep the existing layering. Services check
+the project owner, acquire the same project lock for writes, reject archived
+parents, and then verify issue/comment/label membership. Comment updates/deletes
+also check author_id. Label uniqueness is enforced in PostgreSQL and only that
+specific constraint maps to label_name_taken; unrelated errors still propagate.
+The existing CORS error boundary is retained; PUT/DELETE join the allowed methods.
+
+Issue.labels is a read-only ORM relationship loaded with selectin batching.
+Issue list/board responses use one additional label query for the whole bounded
+page. Comment authors use a joined relationship; public schemas return only ID
+and display name. Assignment changes commit explicitly then return the saved
+label array. They do not replace whole issue records or modify project contents.
+
+ProjectIssueViews adds a Labels view. Label management lives there, so switching
+back to List/Board refetches names and assignments while ordinary board moves
+retain their paging/state model. IssueLabels updates only local assigned labels
+after a confirmed response. Available labels are paged. CommentForm and LabelForm
+retain drafts after errors and use a ref guard against duplicate submissions.
+IssueComments updates an edited item locally and refreshes only its comment page
+after adding/deleting. No mutation refetches the whole project.
+
+useOrganizationAction ignores obsolete async completions with an effect
+generation and never aborts cleanup. useApi, the board hook, auth and welcome
+cleanup fixes are unchanged. Shared LabelBadges render text consistently on
+details, lists and cards. ConfirmDialog now accepts action wording while keeping
+its native modal focus handling and the original archive defaults.
+
+No runtime dependency is added. Cross-tab edits become visible on refresh or
+view re-entry; no live synchronization is promised. Code requires migration 0006,
+which is now approved, applied and verified on local devpilot.

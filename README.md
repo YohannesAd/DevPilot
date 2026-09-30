@@ -4,10 +4,10 @@ DevPilot is a workspace for individual developers to organize projects and track
 
 ## First coding milestone
 
-This repository began with a small vertical slice: a FastAPI health endpoint and a Next.js page that fetches it. Accounts, persistent sessions, private project management and core issues are implemented. Owners can create, list, view, edit and change issue status inside projects. Local migration `0004_project_archival` is applied. `0005_create_issues` is also approved, applied, and verified on local `devpilot`. The project Kanban board is implemented. Comments, labels, assignment, issue archival/deletion, GitHub and AI remain deferred.
+This repository began with a small vertical slice: a FastAPI health endpoint and a Next.js page that fetches it. Accounts, persistent sessions, private project management and core issues are implemented. Owners can create, list, view, edit and change issue status inside projects. Local migration `0004_project_archival` is applied. `0005_create_issues` is also approved, applied, and verified on local `devpilot`. The project Kanban board is implemented. Comments and project labels are now implemented in code. Migration `0006_comments_labels` is approved, applied, and verified on local devpilot. Assignment, issue archival/deletion, GitHub and AI remain deferred.
 
 For the existing Windows setup, use the terminal/directory-labeled commands in
-**Core issues: local commands and acceptance** below. Migration 0005 is already
+**Comments and labels: migration review and handoff** below. Migration 0006 has already been approved and applied locally. Migration 0005 is already
 applied locally. Historical setup sections remain reference material for new installations.
 
 ## Open in VS Code
@@ -543,7 +543,7 @@ python -m alembic check
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
-Current local revision is 0005_create_issues. `alembic check` will report
+Current local revision is 0006_comments_labels. `alembic check` will report
 schema drift if any model changes lack a migration. With 0005 applied, no new upgrade operations were detected.
 Use localhost for both browser/frontend and API URLs; keep credentials include,
 HttpOnly, SameSite=Lax and production Secure settings intact.
@@ -674,7 +674,8 @@ concurrent creation can shift pages. Duplicate IDs are merged, and **Refresh boa
 restarts at zero to discover newer work. Status changes do not affect pagination.
 Cards retain API creation-time/UUID order; no manual ordering is introduced.
 
-No migration or application dependency was added. Head remains 0005_create_issues.
+The board added no migration or application dependency. Its milestone used 0005;
+comments/labels subsequently upgraded local head to 0006_comments_labels.
 Existing authentication, ownership, CSRF, archived checks, CORS errors and Chrome
 stale-result behavior are preserved. No development project was mutated by tests.
 
@@ -790,3 +791,193 @@ development URL. No migration command is needed for this milestone.
 7. With more than 100 disposable issues, use Load older issues through completion.
    Check partial counts/empty messages, retries without losing cards, all five
    statuses, and agreement with List pages. Refresh after another tab creates work.
+
+## Comments and labels: migration review and handoff
+
+Comments and labels are implemented. **Local devpilot is at
+0006_comments_labels (head), applied after explicit user approval.** Alembic
+reported no schema drift. Existing users, sessions, projects and issues were
+verified unchanged. Owner-scoped label/issue reads passed for all four projects,
+and comment reads passed for the existing issue. Browser acceptance remains separate.
+
+The original docs named comments.body, labels and issue_labels but did not define
+limits or colors. Resolved contract: trimmed comment text 1-5,000 characters;
+trimmed label names 1-30 characters, unique per project ignoring case; named
+blue/green/amber/purple/rose/slate palette. Labels never rely on color alone.
+Earlier milestone notes that defer comments/labels are historical; analytics,
+global search, assignment, notifications, issue archival/deletion, GitHub and AI
+remain future work.
+
+### Behavior
+
+- Issue details include chronological comment pages (oldest first, 20 per page),
+  author, creation time and edited indication. Owners add comments, edit their
+  own comments and delete after confirmation. Rendered text never becomes HTML.
+- Project navigation adds Labels. Create, rename/recolor or delete labels there.
+  Alphabetic pagination keeps all labels reachable. Deletion removes assignments
+  while preserving issues, and the confirmation explains that effect.
+- Issue details support assigning/removing project labels. Details, list cards
+  and board cards use the same badge renderer. Other-project labels are rejected
+  by both API checks and composite database foreign keys.
+- All changes use confirmed responses; drafts remain after recoverable failures
+  and pending actions guard duplicate submissions. Repeated assignments/removals
+  are safe no-ops. Repeating an already completed comment/label deletion returns
+  404. After uncertain POST failures, refresh the section before adding again.
+- Archived projects remain readable and prohibit every comment/label write.
+  Ownership, own-author checks, session authentication and exact-Origin CSRF run
+  on the backend. PUT/DELETE CORS is enabled without altering the error boundary.
+- Comment changes refresh only comments; label assignment replaces only local
+  labels. Label management does not refetch project data. Switching back to List
+  or Board loads saved labels; the board's paging and stale-result logic remain.
+  Concurrent changes from another tab require refresh/view re-entry.
+
+### Migration to review
+
+Read [0006_comments_labels.py](backend/alembic/versions/0006_comments_labels.py).
+It follows 0005 and leaves all older migrations unchanged. It creates:
+
+| Change | Purpose |
+| --- | --- |
+| comments | UUID, issue/author FKs, checked body, creation/update timestamps, chronological index |
+| labels | UUID, project FK, checked name/palette, case-insensitive per-project unique index |
+| issue_labels | Issue/label PK, shared project_id, composite project FKs, reverse label index |
+| issues(id, project_id) unique constraint | Supports database-enforced same-project label assignments |
+
+Upgrade preserves existing users, sessions, projects, archival state and issues.
+No content is backfilled or rewritten. Creating the issues constraint takes a
+brief table lock and adds an index. Label deletion cascades only assignments.
+Downgrade removes comments, labels, assignments and the new issues constraint:
+**all comment and label data would be lost**, while earlier project/issue/account
+rows remain. No development downgrade is planned. Upgrade/downgrade tests ran only on
+the isolated test database. The development upgrade was then explicitly approved
+and applied; no development downgrade was run.
+
+### Changed files and responsibilities
+
+| Files | Responsibility |
+| --- | --- |
+| backend/alembic/versions/0006_comments_labels.py | Additive schema and reviewed rollback |
+| backend/app/models.py | Comment, Label, IssueLabel; batched Issue.labels relationship |
+| backend/app/schemas/organization.py; schemas/issues.py | Strict inputs, public author/comment/label contracts, issue labels |
+| backend/app/services/organization.py | Owner/archive/author checks, persistence and predictable mutations |
+| backend/app/routes/organization.py; main.py | Nested routes and standard organization errors |
+| backend/app/security.py | Allow PUT/DELETE through existing credentialed CORS and Origin checks |
+| backend/tests/test_organization.py; test_issues.py; conftest.py | New regressions, updated public contract and guarded cleanup |
+| frontend/lib/organization.ts; useOrganizationAction.ts; issues.ts | Typed contracts, mutation guards/errors/stale results, labels on Issue |
+| frontend/components/CommentForm.tsx; IssueComments.tsx | Comment drafts, chronological pages, author actions and deletion |
+| frontend/components/LabelForm.tsx; ProjectLabels.tsx | Paged label management and confirmed deletion |
+| frontend/components/IssueLabels.tsx; LabelBadges.tsx | Issue assignment controls and consistent label text/colors |
+| frontend/components/Organization.module.css | Layout, wrapping, controls, focus and accessible palette |
+| frontend/components/ConfirmDialog.tsx | Reusable wording; archive defaults and focus behavior preserved |
+| frontend/components/IssueDetail.tsx; ProjectIssueViews.tsx; ProjectIssues.tsx; BoardColumn.tsx | Compose new sections/view and badges |
+| frontend/tests/organization-check.cjs | Reproducible simulated component behavior checks |
+| README.md and six docs files | Contracts, migration status, behavior, verification and remaining scope |
+
+### Actual verification
+
+- Full backend: **183 passed, 22 deprecation warnings in 102.61s** on guarded
+  devpilot_test at loopback port 55432. Test cluster stopped afterwards.
+- Production build passed, including TypeScript and page generation.
+- **15 organization + 18 board + 19 issue + 14 cleanup + 24 auth = 90 simulated
+  frontend checks passed**, zero unhandled rejections. The older issue harness
+  was updated to provide Workspace user context and the new paginated read mocks.
+- Batched label query count verified across 31 issues. Migration metadata matches
+  ORM; isolated round trips preserve existing users/sessions/projects/issues.
+- All six badge palettes measured between **7.97:1 and 12.04:1** text contrast.
+- No connected browser was available. Dialog/fetch/router simulations are not
+  Chrome/Edge verification. No secrets were printed, and nothing was committed/pushed.
+
+### Exact local commands
+
+**PowerShell; starting directory:**
+`C:\Users\yohan_0namuao\Downloads\DevPilot-starter\backend`
+Read-only revision and migration SQL review (does not apply SQL):
+
+```powershell
+& ..\.venv\Scripts\python.exe -m alembic current
+& ..\.venv\Scripts\python.exe -m alembic upgrade 0005_create_issues:0006_comments_labels --sql
+```
+
+**PowerShell; starting directory:** same backend directory.
+**Already completed after explicit approval on this machine.** These commands
+record application and verification; no repeat upgrade is needed:
+
+```powershell
+& ..\.venv\Scripts\python.exe -m alembic upgrade 0006_comments_labels
+& ..\.venv\Scripts\python.exe -m alembic current
+& ..\.venv\Scripts\python.exe -m alembic check
+```
+
+**PowerShell, backend server terminal; starting directory:** same backend directory.
+After migration application:
+
+```powershell
+& ..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
+```
+
+**PowerShell, separate frontend terminal; starting directory:**
+`C:\Users\yohan_0namuao\Downloads\DevPilot-starter\frontend`
+
+```powershell
+npm.cmd run dev
+```
+
+Use http://localhost:3000. Do not launch duplicate servers on occupied ports.
+
+**PowerShell, frontend build terminal; starting directory:** same frontend
+folder; stop its dev server before building to avoid sharing .next.
+
+```powershell
+npm.cmd run build
+```
+
+**PowerShell, frontend simulations; starting directory:**
+`C:\Users\yohan_0namuao\Downloads\DevPilot-starter`
+
+```powershell
+node frontend/tests/organization-check.cjs
+node frontend/tests/board-check.cjs
+node .local-checks/issues-check.cjs
+node .local-checks/use-api-check.cjs
+node .local-checks/auth-session-check.cjs
+```
+
+Both included frontend test scripts use the existing ignored jsdom@29.1.1 tooling
+and installed frontend React/TypeScript. No new runtime dependency was installed.
+The older .local-checks scripts are local diagnostics, not tracked app files.
+
+**PowerShell, guarded backend tests; starting directory:** repository root above.
+These commands use only the existing disposable test cluster, never devpilot:
+
+```powershell
+& 'C:\Program Files\PostgreSQL\18\bin\pg_ctl.exe' start -D "$PWD\.local-checks\management-postgres" -l "$PWD\.local-checks\management-postgres.log" -o '-h 127.0.0.1 -p 55432' -w
+$env:TEST_DATABASE_URL = 'postgresql+psycopg://devpilot_test_admin@127.0.0.1:55432/devpilot_test'
+Set-Location .\backend
+& ..\.venv\Scripts\python.exe -m pytest tests -q
+Remove-Item Env:TEST_DATABASE_URL
+Set-Location ..
+& 'C:\Program Files\PostgreSQL\18\bin\pg_ctl.exe' stop -D "$PWD\.local-checks\management-postgres" -m fast -w
+```
+
+### Remaining browser checks after migration approval/application
+
+1. In Chrome and Edge, use a disposable project/issue. Create a label, try its
+   differently capitalized duplicate, rename/recolor, assign/remove on an issue,
+   and verify its names on List and Board after switching views. Confirm board
+   movement and loading older issues remain functional.
+2. Add a comment containing plain-text markup. Confirm author/date, edit it,
+   verify Edited and refresh/sign out/in to check persistence. Page through more
+   than 20 comments and labels; chronological/alphabetic navigation must reach all.
+3. Cancel each delete dialog, then confirm deletion. Check initial cancel focus,
+   Escape, keyboard containment, disabled pending actions, error focus and return
+   focus. Label deletion must remove assignments without deleting issues.
+4. Disconnect the API during add/edit/delete/assignment. Verify retained drafts,
+   no duplicate pending writes, readable errors, and successful refresh/retry.
+   For uncertain adds, inspect saved pages before retrying.
+5. Archive the project and verify comments/labels remain readable with mutation
+   controls absent. A stale active tab must receive the archived error. Restore,
+   refresh, and check edits work. Try direct IDs as a second account and reject
+   labels from another project.
+6. At desktop and narrow mobile widths, verify wrapping, native selects, visible
+   focus, readable badge names, keyboard controls and announcements. Check Chrome
+   for absence of cleanup AbortError/unhandled fetch overlays.

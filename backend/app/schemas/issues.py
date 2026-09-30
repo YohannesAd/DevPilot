@@ -5,6 +5,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, StringConstraints, field_validator, model_validator
+from app.schemas.organization import PublicLabel
 
 IssueTitle = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 IssueDescription = Annotated[str, StringConstraints(strip_whitespace=True, max_length=10000)]
@@ -59,6 +60,7 @@ class PublicIssue(BaseModel):
     priority: IssuePriority
     created_at: datetime
     updated_at: datetime
+    labels: list[PublicLabel]
 
 
 class IssuePage(BaseModel):

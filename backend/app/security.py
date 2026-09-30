@@ -28,7 +28,7 @@ class SecurityMiddleware:
         self.downstream = ServerErrorMiddleware(app, handler=server_error)
         self.app = CORSMiddleware(
             self.check_origin, allow_origins=[self.settings.frontend_origin],
-            allow_credentials=True, allow_methods=["GET", "POST", "PATCH"],
+            allow_credentials=True, allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],
             allow_headers=["Content-Type"],
         )
 

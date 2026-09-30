@@ -9,7 +9,7 @@
 | 4 — First project workspace | Create, owner-scoped list/detail, dashboard and private navigation implemented | 0003 applied locally; browser acceptance pending |
 | 4b — Project management | Edit, archive, restore, filtered lists, archived detail, confirmation implemented | 0004 approved/applied locally; browser acceptance pending |
 | 5 — Core issues | Create/list/read/edit/status implemented with owner-scoped access and archived-project restrictions | 0005 approved/applied; real-browser issue functionality confirmed by user |
-| 5b — Issue organization | Future: labels, comments, assignment, issue archival; no deletion in this milestone | Not implemented |
+| 5b — Comments and labels | Implemented: comment create/read/edit/delete, project labels and issue assignments | 183 backend tests; build; 15 new + 75 existing simulated frontend checks passed; 0006 approved/applied |
 | 6 — Board | Implemented: List/Board views, five columns, confirmed moves, keyboard controls, desktop dragging and mobile column selector | 151 backend tests; production build; 18 board + 57 existing simulated checks passed; board browser acceptance pending |
 | 7 — V1 quality | Remaining: accessibility review, CI, deployment, full browser acceptance | Complete V1 journey still required |
 
@@ -62,7 +62,7 @@ other existing projects, was not modified. Nothing was committed or pushed.
 
 The user subsequently confirmed real-browser issue functionality. Next: complete
 board-specific browser acceptance; 0005 is already applied and no board migration
-is needed. Comments, labels, assignment, issue archival/deletion, global search,
+is needed for the board. Assignment, issue archival/deletion, global search,
 GitHub and AI remain outside this milestone.
 
 ## Board verification
@@ -82,3 +82,26 @@ mobile selection, List/Board agreement, refresh and expired-session navigation.
 These use React DOM with mocked fetch/router; they are not real browser tests.
 No browser was connected during this milestone. README contains the remaining
 Chrome/Edge, desktop/mobile, keyboard and drag acceptance checks and exact commands.
+
+## Comments and labels handoff
+
+Full backend: **183 passed, 22 existing deprecation warnings in 102.61s** on
+guarded devpilot_test. Coverage includes strict validation, own-author edits,
+case-insensitive label conflicts, cross-account/project IDs, archived rejection,
+sessions, PUT/DELETE CSRF/CORS, chronological/alphabetical pagination, repeated
+actions, label cascade deletion preserving issues, batching, direct DB constraints,
+and migration upgrade/downgrade preserving earlier data. Test cluster stopped.
+
+Production build passed. **15 organization + 18 board + 19 issue + 14 cleanup +
+24 auth = 90 simulated checks passed**, zero unhandled rejections. Dialog APIs,
+fetch and routing are simulated, so these do not establish real browser results.
+Palette contrast was measured at 7.97:1 or higher for all six color pairs.
+No browser was connected; previous real-browser issue confirmation remains valid,
+but new comment/label/board visual and keyboard acceptance remains separate.
+
+After explicit approval, local devpilot was upgraded from 0005 to
+**0006_comments_labels (head)**. Alembic check reports no schema drift. Existing
+users, sessions, projects and issues were verified unchanged; read-only label/issue
+queries passed for all four projects and comments for the existing issue. No
+development downgrade was run. Next: complete the README browser checklist. Analytics, global search, assignment, notifications,
+issue archival/deletion, GitHub and AI remain deferred. No commit or push.

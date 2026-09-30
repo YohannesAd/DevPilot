@@ -13,8 +13,8 @@ erDiagram
 ```
 
 Each project has exactly one owner; each implemented issue belongs to exactly one
-project. The diagram/table include eventual V1 features: labels, comments,
-assignment, and issue archival are still design-only. Future labels must belong
+project. Labels and comments are implemented by migration 0006; assignment and
+issue archival remain design-only. Labels must belong
 to the same project as their issues. No assignee_id or archived_at is added to
 issues in migration 0005.
 
@@ -24,8 +24,8 @@ issues in migration 0005.
 | sessions | `id` UUID PK, `user_id` FK, `token_hash` unique, `expires_at`, `revoked_at`, `created_at` |
 | projects | `id` UUID PK, `owner_id` FK, `name`, `description`, `archived_at` nullable, timestamps |
 | issues | `id` UUID PK, `project_id` FK, `title`, `description`, `type`, `status`, `priority`, `assignee_id` nullable FK, `archived_at` nullable, timestamps |
-| labels | `id` UUID PK, `project_id` FK, `name`, `color`, unique `(project_id, name)` |
-| issue_labels | `(issue_id, label_id)` composite PK and foreign keys |
+| labels | `id` UUID PK, `project_id` FK, `name`, `color`, unique `(project_id, lower(name))` |
+| issue_labels | `(issue_id, label_id)` composite PK, project_id and composite project foreign keys |
 | comments | `id` UUID PK, `issue_id` FK, `author_id` FK, `body`, timestamps |
 
 `status` is one of `backlog`, `todo`, `in_progress`, `review`, `done`; `type` is `bug`, `feature`, `task`; `priority` is `low`, `medium`, `high`, `urgent`. Store timestamps in UTC. Generate IDs server-side. Keep authorship when archiving, and do not hard-delete a user who owns retained history. Foreign keys and indexes support project issue queries and session expiration.
@@ -59,7 +59,7 @@ rows remain stored; no cleanup worker is included in this milestone.
 
 Upgrade creates the table and indexes without altering users. Downgrade to
 `0001_create_users` drops sessions and invalidates all logins while preserving
-users. Migration 0005 implements core issues; labels/comments remain design-only.
+users. Migration 0005 implements core issues; migration 0006 implements labels/comments.
 See the README for setup and SQL verification.
 
 ## Projects: migration 0003_create_projects
@@ -150,9 +150,38 @@ metadata agreement, and project/archive-state preservation across rollback.
 
 ## Board persistence
 
-The Kanban milestone requires no migration. Local head remains
-`0005_create_issues`. Movement updates only the existing issues.status and ORM
+The Kanban milestone required no migration and used `0005_create_issues`.
+Comments/labels subsequently advanced local head to `0006_comments_labels`. Movement updates only the existing issues.status and ORM
 updated_at; IDs, project membership, and created_at stay fixed. No board table,
 rank, position, or manual-order field is added. Cards retain the API's
 created_at DESC, id DESC ordering. The existing status constraint and parent row
 lock continue to enforce valid statuses and archived-project restrictions.
+
+## Comments and labels: 0006_comments_labels
+
+Depends on 0005; old migrations remain unchanged. **Local devpilot is now at
+0006_comments_labels (head), applied after explicit approval.** Alembic check
+reported no schema drift; existing users, sessions, projects and issues were
+verified unchanged. Only guarded devpilot_test was downgraded. Read-only label,
+issue and comment queries passed against the migrated development schema.
+
+- `comments`: UUID PK, issue_id FK, author_id FK, body text with 1–5,000/nonblank
+  check, UTC created_at and updated_at. Index `(issue_id, created_at, id)` supports
+  chronological pages. Authors reference retained users; no account cascade.
+- `labels`: UUID PK, project_id FK, name varchar(30) with length/trim/nonblank check,
+  color enum check using six fixed values (blue default). Unique index on
+  `(project_id, lower(name))` handles case-insensitive uniqueness under concurrency.
+- `issue_labels`: PK `(issue_id, label_id)`, project_id, reverse label index and
+  composite FKs to `(issues.id, issues.project_id)` and `(labels.id, labels.project_id)`.
+  This rejects cross-project assignments even through direct SQL. The label FK
+  cascades assignment deletion only; issues are preserved.
+- Composite unique constraints on issues and labels `(id, project_id)` support
+  those FKs. The issues constraint adds an index and briefly locks that table
+  during migration; no existing issue values are rewritten.
+
+Upgrade preserves existing users, sessions, projects, archive states and issues.
+No labels/comments are backfilled. Downgrade removes the three new tables and
+the added issues constraint, **permanently losing all comments, labels and label
+assignments**, while retaining previous issue/project/account data. No development
+downgrade is authorized or planned. Label deletion preserves issue timestamps;
+comment edits update only that comment's updated_at. Same-body edits are no-ops.

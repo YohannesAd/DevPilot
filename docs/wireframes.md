@@ -81,8 +81,8 @@ that restoration is required.
 Controls wrap/stack at the existing mobile breakpoint; long titles/descriptions
 wrap and descriptions preserve line breaks without interpreting markup. Status
 is always text, not color alone. Existing focus outlines and native keyboard
-controls are retained. No labels, comments, assignment or deletion actions
-are displayed. Search/filter controls and dashboard issue counts remain future.
+controls are retained. Comment/label controls are described below; assignment and
+issue deletion remain deferred. Search/filter controls and dashboard issue counts remain future.
 
 ## Implemented board flow
 
@@ -107,3 +107,29 @@ all pages are loaded; displayed counts explicitly refer to loaded cards.
 The user confirmed the earlier real-browser issue functionality. This board's
 desktop/mobile layout, drag feedback and actual keyboard focus still require
 browser acceptance; simulated events do not constitute browser verification.
+
+## Comments and labels flow
+
+Project navigation now includes List, Board, Labels. The Labels view is
+`/projects/[id]?view=labels`. It has a name field, named color selector, alphabetic
+20-item pages, edit actions and confirmed deletion. The dialog explicitly says
+all assignments are removed and issues preserved. Archived projects show names
+and pages without mutation forms. List/Board layouts and paging remain intact.
+
+Issue details show assigned name badges, Remove actions, a paged project-label
+picker, and a Manage project labels link. Mutations are confirmed before badges
+change; section-level status/error text communicates the result. All palette
+foreground/background pairs have measured contrast above 7.9:1; names convey
+meaning independently of color. Controls wrap on narrow screens.
+
+Below labels, Comments contains a labeled plain-text textarea and oldest-first
+20-item pages. Each item shows author, creation time and Edited when applicable.
+Only own-author items offer Edit/Delete. Edit starts with saved text. Delete
+uses a native confirmation dialog, initially focused on Keep comment; failures
+stay in the dialog and success focuses the comments heading. Drafts remain after
+recoverable errors, and Refresh comments fetches only that section. New comments
+are at the chronological end; feedback directs users to Newer comments as needed.
+Older comments always remain accessible via paging. Archived comments are read-only.
+
+Real Chrome/Edge desktop/mobile, keyboard, focus and screen-reader checks remain
+manual; the implemented flows have simulated DOM and isolated API coverage.

@@ -52,7 +52,7 @@ an explicit null description clears it. Forms retain edits after recoverable err
 Project migrations through 0004 are already applied to local devpilot.
 Isolated backend tests and production build passed;
 browser acceptance remains unverified because no browser was connected.
-Labels, comments, assignment, issue archival/deletion, and issue counts
+Assignment, issue archival/deletion, and issue counts
 remain future V1 work. No placeholder activity or statistics are shown.
 
 ## Implemented core issues milestone
@@ -73,7 +73,7 @@ after recoverable failures; no draft is stored in browser storage.
 Migration 0005 is tested in isolation and approved/applied to local
 devpilot. The user subsequently confirmed real-browser issue functionality.
 Board-specific browser checks remain separate; HTTP-client and simulated DOM
-checks do not establish browser behavior. Comments, labels, assignment, deletion,
+checks do not establish browser behavior. Assignment, issue deletion,
 GitHub and AI remain deferred.
 
 ## Implemented Kanban milestone
@@ -90,5 +90,26 @@ The board loads 100 newest issues per explicit page request, across all statuses
 and offers Load older issues until complete. Partial counts say loaded. There is
 no hidden total cap, automatic unbounded fetch, or new manual ordering model.
 Refresh and List/Board switching load persisted records; status movement reuses
-the authenticated issue update endpoint. Comments, labels, global search,
+the authenticated issue update endpoint. Global search,
 assignment, GitHub and AI remain out of scope. No migration is required.
+
+## Implemented comments and labels milestone
+
+Owners add plain-text issue comments, read oldest-first pages, edit their own
+comments and permanently delete them after confirmation. Text is trimmed,
+1–5,000 characters. Author, creation time and edited indication are visible.
+Drafts survive recoverable failures; duplicate pending submissions are blocked.
+
+Project Labels supports creation, renaming/recoloring and confirmed deletion.
+Names are trimmed 1–30 characters, case-insensitively unique per project. A fixed
+blue/green/amber/purple/rose/slate palette supplements visible label names. Owners
+assign/remove existing project labels from issue details. Deleting a label removes
+its assignments while preserving issues. List and Board cards show the same labels.
+Archived projects remain readable but prohibit all comment/label writes.
+
+The earlier docs specified table/route names but no limits or color contract;
+the limits above resolve those gaps using this milestone's requested defaults.
+Earlier comments/labels-deferred statements refer to historical milestones.
+Assignment, issue archival/deletion, analytics, search, notifications, GitHub and
+AI remain deferred. Implementation is complete in code; local migration 0006
+is approved and applied, and browser acceptance is separate from simulated checks.

@@ -8,6 +8,8 @@ import { issueCollectionPath, ISSUE_TYPES, ISSUE_STATUSES, ISSUE_PRIORITIES, typ
 import { Button, ButtonLink } from "./Button";
 import { WorkspaceState } from "./Workspace";
 import IssueForm from "./IssueForm";
+import IssueComments from "./IssueComments";
+import IssueLabels from "./IssueLabels";
 import workspace from "./Workspace.module.css";
 import styles from "./Issues.module.css";
 
@@ -49,6 +51,9 @@ function SavedIssue({ initialIssue, project }: { initialIssue: Issue; project: P
         <div><dt>Visibility</dt><dd>Only you</dd></div>
       </dl>
     </section>
+    <IssueLabels projectId={project.id} issueId={issue.id} labels={issue.labels} archived={!!project.archived_at}
+      onSaved={labels => setIssue(previous => ({ ...previous, labels }))} />
+    <IssueComments projectId={project.id} issueId={issue.id} archived={!!project.archived_at} />
   </div>;
 }
 

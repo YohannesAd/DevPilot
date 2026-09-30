@@ -33,7 +33,7 @@ def test_create_defaults_update_clear_and_persist(client, workspace, clean_datab
     response = client.post(path, json={"title": "  First task  ", "description": "  Plain text\nSecond line  "})
     assert response.status_code == 201
     saved = response.json()
-    assert set(saved) == {"id", "project_id", "title", "description", "type", "status", "priority", "created_at", "updated_at"}
+    assert set(saved) == {"id", "project_id", "title", "description", "type", "status", "priority", "created_at", "updated_at", "labels"}
     assert saved["project_id"] == project["id"] and saved["title"] == "First task"
     assert saved["description"] == "Plain text\nSecond line"
     assert (saved["type"], saved["status"], saved["priority"]) == ("task", "todo", "medium")

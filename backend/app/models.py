@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, Uuid, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, ForeignKeyConstraint, UniqueConstraint, Index, String, Text, Uuid, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -90,8 +90,12 @@ class Issue(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
+    labels: Mapped[list["Label"]] = relationship(secondary="issue_labels", viewonly=True,
+        primaryjoin="Issue.id == IssueLabel.issue_id", secondaryjoin="Label.id == IssueLabel.label_id",
+        lazy="selectin", order_by="(func.lower(Label.name), Label.id)")
 
     __table_args__ = (
+        UniqueConstraint("id", "project_id", name="uq_issues_id_project"),
         CheckConstraint("length(title) BETWEEN 1 AND 200 AND title ~ '[^[:space:]]'", name="ck_issues_title"),
         CheckConstraint("description IS NULL OR length(description) <= 10000", name="ck_issues_description"),
         CheckConstraint("type IN ('task', 'bug', 'feature')", name="ck_issues_type"),
@@ -99,3 +103,48 @@ class Issue(Base):
         CheckConstraint("priority IN ('low', 'medium', 'high', 'urgent')", name="ck_issues_priority"),
         Index("ix_issues_project_created_id", "project_id", "created_at", "id"),
     )
+
+
+class Label(Base):
+    __tablename__ = "labels"
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id", name="fk_labels_project"), nullable=False)
+    name: Mapped[str] = mapped_column(String(30), nullable=False)
+    color: Mapped[str] = mapped_column(String(16), nullable=False, server_default="blue")
+    __table_args__ = (
+        UniqueConstraint("id", "project_id", name="uq_labels_id_project"),
+        Index("uq_labels_project_name_lower", "project_id", func.lower(name), unique=True),
+        CheckConstraint("length(name) BETWEEN 1 AND 30 AND name ~ '[^[:space:]]' AND name = btrim(name)", name="ck_labels_name"),
+        CheckConstraint("color IN ('blue', 'green', 'amber', 'purple', 'rose', 'slate')", name="ck_labels_color"),
+    )
+
+
+class IssueLabel(Base):
+    __tablename__ = "issue_labels"
+    issue_id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
+    label_id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
+    project_id: Mapped[UUID] = mapped_column(Uuid, nullable=False)
+    __table_args__ = (
+        ForeignKeyConstraint(["issue_id", "project_id"], ["issues.id", "issues.project_id"], name="fk_issue_labels_issue_project"),
+        ForeignKeyConstraint(["label_id", "project_id"], ["labels.id", "labels.project_id"], name="fk_issue_labels_label_project", ondelete="CASCADE"),
+        Index("ix_issue_labels_label", "label_id"),
+    )
+
+
+class Comment(Base):
+    __tablename__ = "comments"
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    issue_id: Mapped[UUID] = mapped_column(ForeignKey("issues.id", name="fk_comments_issue"), nullable=False)
+    author_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", name="fk_comments_author"), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+    author: Mapped[User] = relationship(lazy="joined")
+    __table_args__ = (
+        CheckConstraint("length(body) BETWEEN 1 AND 5000 AND body ~ '[^[:space:]]'", name="ck_comments_body"),
+        Index("ix_comments_issue_created_id", "issue_id", "created_at", "id"),
+    )
+
+    @property
+    def edited(self) -> bool:
+        return self.updated_at > self.created_at

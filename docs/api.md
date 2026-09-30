@@ -16,12 +16,12 @@ All routes use `/api`. Request and response bodies are JSON. IDs are UUIDs. Prot
 | POST | `/api/projects/{project_id}/restore` | Restore own project; implemented |
 | GET, POST | `/api/projects/{project_id}/issues` | List or create issues; implemented |
 | GET, PATCH | `/api/projects/{project_id}/issues/{issue_id}` | Read/edit issue fields or status; implemented; no archive/delete |
-| GET, POST | `/api/projects/{project_id}/labels` | Future: list or create project labels |
-| GET, POST | `/api/projects/{project_id}/issues/{issue_id}/comments` | Future: list or create comments |
+| GET, POST | `/api/projects/{project_id}/labels` | List or create project labels; implemented in 0006 |
+| GET, POST | `/api/projects/{project_id}/issues/{issue_id}/comments` | List or create comments; implemented in 0006 |
 | GET | `/api/projects/{project_id}/summary` | Future: dashboard status counts |
 
 Issue PATCH accepts only `title`, `description`, `type`, `status`, and `priority`.
-Assignment, issue archival/deletion, labels, comments, and list filters are
+Assignment, issue archival/deletion, and list filters are
 deferred. Lists currently support bounded pagination. The exact issue contract is below.
 
 ## Registration (implemented)
@@ -145,7 +145,7 @@ endpoints; successful registration leads to login rather than creating a session
 ## Projects (implemented)
 
 All project endpoints require the existing session. POST and PATCH require the
-existing trusted Origin check. CORS allows GET, POST, PATCH from the configured
+existing trusted Origin check. CORS allows GET, POST, PATCH, PUT, DELETE from the configured
 frontend origin with credentials. All project responses, including errors, use no-store.
 The frontend uses credentials: "include" for every request.
 
@@ -253,7 +253,8 @@ project_id, id, timestamps, assignee_id, labels, archived_at) are rejected with 
 ```
 
 Public responses contain exactly `id`, `project_id`, `title`, `description`,
-`type`, `status`, `priority`, `created_at`, `updated_at`. IDs are UUIDs; timestamps
+`type`, `status`, `priority`, `created_at`, `updated_at`, and `labels`. Labels are
+public label objects sorted by case-insensitive name then ID. IDs are UUIDs; timestamps
 are UTC. Description is nullable. Ownership is inherited from the project and is
 not returned as a separate owner field.
 
@@ -310,3 +311,61 @@ move cards. A retry repeats the same desired status safely; a network failure
 can mean the write succeeded, so refreshing also reconciles the saved status.
 Authentication, exact Origin checks, owner/project scope, and archived 409 rules
 are unchanged. A server error retains the generic error envelope and CORS headers.
+
+## Comments and labels (implemented; local 0006 applied)
+
+Every endpoint below authenticates the session and authorizes the parent project.
+An issue ID must belong to that same project. Unsafe methods require the exact
+trusted Origin, including PUT and DELETE. Archived projects permit reads but
+reject every write with 409 project_archived. No owner/author/project identifiers
+are accepted in request bodies. Public issue responses now include `labels: []`
+or label objects, including list, detail, create and update responses. Labels are
+loaded in one batched query per issue page, not once per issue.
+
+### Comments
+
+Base: `/api/projects/{project_id}/issues/{issue_id}/comments`.
+
+| Method/path | Contract |
+| --- | --- |
+| GET base | 200 `{items, has_more}`; limit 1–100 (default 20), offset >= 0; created_at ASC, id ASC |
+| POST base | Strict `{body}`: trimmed plain text, 1–5,000 characters; 201 public comment |
+| GET base/{comment_id} | 200 public comment, scoped to parent issue/project |
+| PATCH base/{comment_id} | Strict `{body}`, same validation; own-author only; 200 saved comment |
+| DELETE base/{comment_id} | Own-author only; 204; repeat/missing ID returns 404 comment_not_found |
+
+Public comment: `id`, `issue_id`, `body`, `author: {id, display_name}`,
+`created_at`, `updated_at`, `edited`. No email or credential fields are exposed.
+The author is always the session user on creation. Edited means updated_at is
+later than created_at; repeating the same body is a no-op. Missing/foreign IDs
+and attempts to mutate another author's comment return 404 comment_not_found.
+POST is not an idempotency endpoint: after an uncertain response, inspect the
+comment pages before retrying. Pagination is chronological, oldest first; deletes
+may shift offsets, so refresh or page backwards to reconcile concurrent changes.
+
+### Project labels and assignments
+
+Base: `/api/projects/{project_id}/labels`.
+
+| Method/path | Contract |
+| --- | --- |
+| GET base | 200 `{items, has_more}`; limit 1–100 (default 20), offset >= 0; lower(name) ASC, id ASC |
+| POST base | Strict `{name, color?}`; 201 public label |
+| GET base/{label_id} | 200 public label scoped to this project |
+| PATCH base/{label_id} | Nonempty partial `{name?, color?}`; omitted unchanged, explicit null forbidden; 200 saved label |
+| DELETE base/{label_id} | 204; removes label and all assignments, preserves issues; repeat/missing ID returns 404 |
+
+Name: trimmed 1–30 characters, unique within the project ignoring case using
+PostgreSQL lower(name). Color: blue (default), green, amber, purple, rose, slate.
+Public label: `id`, `project_id`, `name`, `color`. Renaming/recoloring keeps the ID
+and its assignments. Duplicate name returns 409 label_name_taken; a missing or
+other-project label returns 404 label_not_found. Unknown/null fields and invalid
+colors/text return the established 422 validation_error, without echoing input.
+
+`PUT /api/projects/{project_id}/issues/{issue_id}/labels/{label_id}` assigns a
+label; `DELETE` at the same path removes that assignment. No body is required.
+Both return 200 with the issue's complete saved label array. Repeating either
+action is a no-op with the same response. The label must still exist in the same
+project (404 otherwise); composite database foreign keys enforce this as well.
+Issue title, description, status, creation time and updated_at are not changed by
+label assignments. Comments and labels are not writable through issue PATCH.

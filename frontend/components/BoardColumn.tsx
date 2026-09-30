@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "./Button";
+import LabelBadges from "./LabelBadges";
 import { ISSUE_STATUSES, ISSUE_TYPES, ISSUE_PRIORITIES, issueHref, type Issue } from "@/lib/issues";
 import type { IssueStatus } from "@/lib/useIssueBoard";
 import styles from "./IssueBoard.module.css";
@@ -20,6 +21,7 @@ function BoardCard({ issue, disabled, pending, onMove, onDrag }: {
     <h4><Link id={`board-issue-${issue.id}`} href={issueHref(issue.project_id, issue.id)} draggable={false}>{issue.title}</Link></h4>
     <p>Type: {ISSUE_TYPES[issue.type]}</p><p>Priority: {ISSUE_PRIORITIES[issue.priority]}</p>
     <p>Status: {ISSUE_STATUSES[issue.status]}</p>
+    <LabelBadges labels={issue.labels} />
     <form onSubmit={event => { event.preventDefault(); onMove(issue, target); }} className={styles.move}>
       <label htmlFor={`move-${issue.id}`}>Move to <span className={styles.srOnly}>{issue.title}</span></label>
       <select id={`move-${issue.id}`} value={target} disabled={disabled} onChange={event => setTarget(event.target.value as IssueStatus)}>

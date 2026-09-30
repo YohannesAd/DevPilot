@@ -4,9 +4,11 @@ import { useEffect, useId, useRef, type ReactNode } from "react";
 import { Button } from "./Button";
 import styles from "./Workspace.module.css";
 
-export default function ConfirmDialog({ title, children, pending, error, onCancel, onConfirm }: {
+export default function ConfirmDialog({ title, children, pending, error, onCancel, onConfirm,
+  cancelLabel = "Keep active", confirmLabel = "Archive project", pendingLabel = "Archiving…" }: {
   title: string; children: ReactNode; pending: boolean; error: string;
   onCancel: () => void; onConfirm: () => void;
+  cancelLabel?: string; confirmLabel?: string; pendingLabel?: string;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -30,9 +32,9 @@ export default function ConfirmDialog({ title, children, pending, error, onCance
     <div id={`${id}-description`}>{children}</div>
     {error && <p ref={errorRef} tabIndex={-1} className={styles.error} role="alert">{error}</p>}
     <div className={styles.actions}>
-      <Button ref={cancelRef} type="button" variant="secondary" disabled={pending} onClick={onCancel}>Keep active</Button>
-      <Button type="button" disabled={pending} onClick={onConfirm}>{pending ? "Archiving…" : "Archive project"}</Button>
+      <Button ref={cancelRef} type="button" variant="secondary" disabled={pending} onClick={onCancel}>{cancelLabel}</Button>
+      <Button type="button" disabled={pending} onClick={onConfirm}>{pending ? pendingLabel : confirmLabel}</Button>
     </div>
-    {pending && <p role="status">Saving archived state…</p>}
+    {pending && <p role="status">{pendingLabel}</p>}
   </dialog>;
 }
