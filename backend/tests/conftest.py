@@ -22,10 +22,19 @@ def isolated_auth_settings(monkeypatch):
     monkeypatch.setenv("APP_ENV", "development")
     monkeypatch.setenv("FRONTEND_ORIGIN", "http://localhost:3000")
     monkeypatch.setenv("API_ORIGIN", "http://localhost:8000")
+    for name in list(os.environ):
+        if name.startswith("AUTH_RATE_") or name.startswith("AUTH_LOGIN_") or name.startswith("AUTH_REGISTER_") or name == "AUTH_TRUSTED_PROXY_CIDRS":
+            monkeypatch.delenv(name)
+    # Existing feature tests exercise auth repeatedly; limiter tests set small explicit thresholds.
+    for name in ["AUTH_LOGIN_IP_LIMIT", "AUTH_LOGIN_EMAIL_LIMIT", "AUTH_REGISTER_IP_LIMIT"]:
+        monkeypatch.setenv(name, "10000")
+    monkeypatch.setenv("AUTH_RATE_KEY_SECRET", "isolated-test-key-not-a-production-secret")
+    config.get_rate_limit_settings.cache_clear()
     config.get_auth_settings.cache_clear()
     app.middleware_stack = None
     yield
     config.get_auth_settings.cache_clear()
+    config.get_rate_limit_settings.cache_clear()
     app.middleware_stack = None
 
 
@@ -68,10 +77,10 @@ def test_engine():
 def clean_database(test_engine):
     # Only the guarded, disposable devpilot_test database is cleared.
     with test_engine.begin() as connection:
-        connection.execute(text("TRUNCATE TABLE comments, issue_labels, labels, issues, projects, sessions, users"))
+        connection.execute(text("TRUNCATE TABLE auth_rate_limits, comments, issue_labels, labels, issues, projects, sessions, users"))
     yield test_engine
     with test_engine.begin() as connection:
-        connection.execute(text("TRUNCATE TABLE comments, issue_labels, labels, issues, projects, sessions, users"))
+        connection.execute(text("TRUNCATE TABLE auth_rate_limits, comments, issue_labels, labels, issues, projects, sessions, users"))
 
 
 @pytest.fixture

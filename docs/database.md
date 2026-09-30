@@ -207,3 +207,21 @@ at 0006_comments_labels and zero Alembic metadata differences, in an enforced
 read-only transaction. backend/scripts/check_schema.py is the reusable verifier.
 Clean empty-to-head and downgrade/preservation tests use only guarded disposable
 devpilot_test. See [testing](testing.md) for exact commands and comparison limits.
+
+## Authentication counters: 0007_auth_rate_limits
+
+Code head and local devpilot are now 0007. After explicit approval on 2026-09-30,
+the upgrade from 0006 succeeded; read-only verification found zero schema differences.
+The migration adds auth_rate_limits(key varchar(64) PK, attempts integer NOT NULL,
+expires_at timestamptz NOT NULL), a 1..1000001 attempts check and an expiry index.
+Keys are scope-separated HMAC digests; there are no raw identities, passwords or
+foreign keys to account data. All existing tables are preserved. Downgrade removes
+only the table/index and counter history. SQL and approval status are in
+[authentication limits](auth-rate-limits.md). The old 0006 head statements above
+record historical checks, not permission to run an upgrade.
+
+PostgreSQL UPSERTs enforce shared budgets using DB time; attempts commit before
+authentication. Logical validity is at most the configured window (max 24 hours).
+Physical expiry requires opportunistic bounded deletion plus monitored scheduled
+cleanup every minute, including idle periods; see the retention contract above.
+Isolated tests verified upgrade/downgrade data preservation and schema agreement.

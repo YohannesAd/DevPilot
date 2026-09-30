@@ -12,8 +12,11 @@ from app.models import UserSession
 from app.schemas.auth import ErrorResponse, LoginRequest, PublicUser, RegisterRequest
 from app.security import SESSION_COOKIE, clear_session_cookie, set_session_cookie
 from app.services.auth import EmailAlreadyRegistered, login_user, logout_session, register_user
+from app.services.rate_limits import check_attempt
 
-router = APIRouter(prefix="/api/auth", tags=["auth"], responses={403: {"model": ErrorResponse}})
+router = APIRouter(prefix="/api/auth", tags=["auth"], responses={
+    403: {"model": ErrorResponse}, 429: {"model": ErrorResponse}, 503: {"model": ErrorResponse},
+})
 
 
 @router.post(
@@ -22,8 +25,9 @@ router = APIRouter(prefix="/api/auth", tags=["auth"], responses={403: {"model": 
                422: {"model": ErrorResponse, "description": "Invalid registration input"}},
 )
 def register(
-    registration: RegisterRequest, db: Annotated[Session, Depends(get_db)]
+    registration: RegisterRequest, request: Request, db: Annotated[Session, Depends(get_db)]
 ) -> PublicUser | JSONResponse:
+    check_attempt(db, request, "register", registration.email)
     try:
         user = register_user(db, registration)
     except EmailAlreadyRegistered:
@@ -39,6 +43,7 @@ def register(
 })
 def login(credentials: LoginRequest, request: Request, response: Response,
           db: Annotated[Session, Depends(get_db)]) -> PublicUser:
+    check_attempt(db, request, "login", credentials.email)
     user, token, expires_at = login_user(db, credentials, request.cookies.get(SESSION_COOKIE))
     set_session_cookie(response, token, expires_at)
     return PublicUser.model_validate(user)

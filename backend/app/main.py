@@ -14,6 +14,7 @@ from app.security import SecurityMiddleware
 from app.services.auth import AuthenticationRequired, InvalidCredentials
 from app.services.projects import ProjectArchived, ProjectNotFound
 from app.services.issues import IssueNotFound
+from app.services.rate_limits import RateLimited, RateLimitUnavailable
 
 app = FastAPI(title="DevPilot API")
 
@@ -25,6 +26,20 @@ app.include_router(projects_router)
 app.include_router(issues_router)
 app.include_router(organization_router)
 app.include_router(dashboard_router)
+
+
+@app.exception_handler(RateLimited)
+async def rate_limited(_request: Request, exc: RateLimited):
+    return JSONResponse(status_code=429, headers={"Retry-After": str(exc.retry_after)}, content={"error": {
+        "code": "rate_limited", "message": "Too many attempts. Wait before trying again.",
+    }})
+
+
+@app.exception_handler(RateLimitUnavailable)
+async def rate_limit_unavailable(_request: Request, _exc: RateLimitUnavailable):
+    return JSONResponse(status_code=503, headers={"Retry-After": "60"}, content={"error": {
+        "code": "auth_unavailable", "message": "Sign in and registration are temporarily unavailable. Please try again later.",
+    }})
 
 
 @app.exception_handler(HTTPException)

@@ -7,7 +7,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.responses import JSONResponse, Response
 
-from app.config import get_auth_settings
+from app.config import get_auth_settings, get_rate_limit_settings
 from app.services.auth import SESSION_TTL_SECONDS
 
 SESSION_COOKIE = "devpilot_session"
@@ -23,13 +23,14 @@ class SecurityMiddleware:
     def __init__(self, app):
         # Starlette initializes middleware on first use, not at module import.
         self.settings = get_auth_settings()
+        get_rate_limit_settings()  # Validate limits and proxy/secret settings before serving requests.
         # Render failures inside CORS/no-store so the frontend can read the 500.
         # ServerErrorMiddleware re-raises afterwards, preserving server logging.
         self.downstream = ServerErrorMiddleware(app, handler=server_error)
         self.app = CORSMiddleware(
             self.check_origin, allow_origins=[self.settings.frontend_origin],
             allow_credentials=True, allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],
-            allow_headers=["Content-Type"],
+            allow_headers=["Content-Type"], expose_headers=["Retry-After"],
         )
 
     async def __call__(self, scope, receive, send):

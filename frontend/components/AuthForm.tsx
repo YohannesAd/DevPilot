@@ -57,6 +57,16 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
       router.replace(register ? "/login?registered=1" : workspaceDestination(new URLSearchParams(window.location.search).get("next")));
     } catch (err) {
       const code = err instanceof ApiError ? err.code : "";
+      if (err instanceof ApiError && err.status === 429) {
+        setError(`Too many attempts. ${err.retryAfter ? `Wait ${err.retryAfter} seconds before trying again.` : "Wait a few minutes before trying again."} Your details are kept; submit again when you’re ready.`);
+        setPending(false); submitting.current = false;
+        return;
+      }
+      if (code === "auth_unavailable") {
+        setError("Sign in and registration are temporarily unavailable. Your details are kept. Please try again in a minute.");
+        setPending(false); submitting.current = false;
+        return;
+      }
       setError(code === "email_already_registered" ? "An account with this email already exists. Log in instead." : code === "invalid_credentials" ? "That email and password don’t match. Please try again." : code === "validation_error" ? "Please check your details and try again." : code === "csrf_failed" ? "This request couldn’t be verified. Refresh this page and try again." : "We couldn’t connect right now. Please try again in a moment.");
       setPending(false); submitting.current = false;
     }

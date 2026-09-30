@@ -3,7 +3,9 @@
 DevPilot is a private project workspace: accounts, project archive/restore,
 issues, Kanban, comments, labels, project filters and a real-data dashboard.
 Next.js/React/TypeScript provide the UI; FastAPI/SQLAlchemy/PostgreSQL provide the
-API. Current schema head is `0006_comments_labels`.
+API. Code schema head and local `devpilot` are at `0007_auth_rate_limits`.
+The rate-limit migration was approved and applied on 2026-09-30; read-only
+verification found zero schema differences.
 
 ## Supported development environment
 
@@ -50,7 +52,8 @@ npm.cmd ci
 ```
 
 On a **new empty database**, review migrations before the following command.
-The existing local devpilot database is already at head and needs no upgrade.
+The existing local devpilot database already has migration 0007 applied;
+review [its effects and operational setup](docs/auth-rate-limits.md).
 
 **PowerShell; starting directory: `<repo>\backend` (new database only):**
 
@@ -67,7 +70,7 @@ Alembic head and ORM metadata agreement. It never applies or rolls back migratio
 **PowerShell, backend terminal; starting directory: `<repo>\backend`:**
 
 ```powershell
-& ..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
+& ..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000 --no-proxy-headers
 ```
 
 **PowerShell, separate frontend terminal; starting directory: `<repo>\frontend`:**
@@ -103,7 +106,8 @@ Backend tests intentionally truncate and migrate their database. They accept onl
 loopback PostgreSQL named **devpilot_test**, never devpilot. Follow the isolated
 [testing commands](docs/testing.md), or let [GitHub Actions](.github/workflows/checks.yml)
 create its disposable PostgreSQL service. CI needs no local .env or account secrets.
-An actual hosted Actions run is still required after you choose to push.
+The user confirmed the previous hosted Actions run passed. The new authentication
+limiter changes still require their own hosted run after you choose to push.
 
 ## Project guide
 
@@ -112,6 +116,7 @@ An actual hosted Actions run is still required after you choose to push.
   [roadmap](docs/roadmap.md).
 - [Release review: findings, coverage, verification and changed files](docs/release-readiness.md).
 - [Production configuration and deployment decisions](docs/deployment.md).
+- [Authentication limits, proxy trust, retention and migration review](docs/auth-rate-limits.md).
 - [Testing and dependency maintenance](docs/testing.md).
 - [Historical milestones and inventories](docs/milestone-history.md) are archived
   evidence, not current setup instructions.

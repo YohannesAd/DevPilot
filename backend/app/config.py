@@ -1,7 +1,8 @@
 """Local environment configuration; no credentials belong in source code."""
 
 import os
-from dataclasses import dataclass
+from ipaddress import ip_network
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -62,3 +63,49 @@ def get_auth_settings() -> AuthSettings:
             raise RuntimeError(f"{name} must be an exact origin; production requires HTTPS.")
         origins.append(value)
     return AuthSettings(*origins, secure_cookie=production)
+
+
+@dataclass(frozen=True)
+class RateLimitSettings:
+    login_ip_limit: int
+    login_ip_window: int
+    login_email_limit: int
+    login_email_window: int
+    register_ip_limit: int
+    register_ip_window: int
+    key_secret: bytes = field(repr=False)
+    trusted_proxies: tuple
+
+
+@lru_cache
+def get_rate_limit_settings() -> RateLimitSettings:
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
+    def number(name, default, maximum):
+        try:
+            value = int(os.environ.get(name, str(default)))
+            if not 1 <= value <= maximum:
+                raise ValueError
+            return value
+        except ValueError:
+            raise RuntimeError(f"{name} must be an integer between 1 and {maximum}.") from None
+
+    secret = os.environ.get("AUTH_RATE_KEY_SECRET", "")
+    if secret and len(secret.encode()) < 32:
+        raise RuntimeError("AUTH_RATE_KEY_SECRET must contain at least 32 bytes.")
+    if not secret:
+        if get_auth_settings().secure_cookie:
+            raise RuntimeError("Production requires a shared AUTH_RATE_KEY_SECRET of at least 32 random bytes.")
+        secret = "devpilot-development-rate-key-not-for-production"
+    try:
+        proxies = tuple(ip_network(item.strip(), strict=True) for item in
+                        os.environ.get("AUTH_TRUSTED_PROXY_CIDRS", "").split(",") if item.strip())
+        if any(network.prefixlen == 0 for network in proxies):
+            raise ValueError
+    except ValueError:
+        raise RuntimeError("AUTH_TRUSTED_PROXY_CIDRS must contain explicit IPs/CIDRs, never a wildcard or default route.") from None
+    return RateLimitSettings(
+        number("AUTH_LOGIN_IP_LIMIT", 30, 1000000), number("AUTH_LOGIN_IP_WINDOW_SECONDS", 600, 86400),
+        number("AUTH_LOGIN_EMAIL_LIMIT", 10, 1000000), number("AUTH_LOGIN_EMAIL_WINDOW_SECONDS", 900, 86400),
+        number("AUTH_REGISTER_IP_LIMIT", 5, 1000000), number("AUTH_REGISTER_IP_WINDOW_SECONDS", 3600, 86400),
+        secret.encode(), proxies,
+    )

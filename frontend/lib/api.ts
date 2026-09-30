@@ -1,6 +1,6 @@
 export type PublicUser = { id: string; email: string; display_name: string; created_at: string; updated_at: string };
 export class ApiError extends Error {
-  constructor(public status: number, public code: string, message: string) { super(message); }
+  constructor(public status: number, public code: string, message: string, public retryAfter?: number) { super(message); }
 }
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   let response: Response;
@@ -12,7 +12,10 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   } catch { throw new ApiError(0, "unavailable", "We couldn’t connect. Please try again in a moment."); }
   if (!response.ok) {
     const data = await response.json().catch(() => null);
-    throw new ApiError(response.status, data?.error?.code ?? "request_failed", "Something went wrong. Please try again.");
+    const retry = response.headers?.get("Retry-After");
+    const seconds = retry && /^\d+$/.test(retry) ? Number(retry) : undefined;
+    throw new ApiError(response.status, data?.error?.code ?? "request_failed", "Something went wrong. Please try again.",
+      seconds !== undefined && Number.isSafeInteger(seconds) && seconds > 0 ? seconds : undefined);
   }
   return response.status === 204 ? undefined as T : response.json();
 }

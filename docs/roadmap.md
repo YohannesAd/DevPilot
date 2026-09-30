@@ -12,7 +12,8 @@
 | 5b — Comments and labels | Implemented: comment create/read/edit/delete, project labels and issue assignments | 183 backend tests; build; 15 new + 75 existing simulated frontend checks passed; 0006 approved/applied |
 | 6 — Board | Implemented: List/Board views, five columns, confirmed moves, keyboard controls, desktop dragging and mobile column selector | 151 backend tests; production build; 18 board + 57 existing simulated checks passed; board browser acceptance pending |
 | 6b — Filtering and dashboard | Shared URL filters, server title search, active-work totals and bounded recent work | 197 backend tests; 104 simulated frontend checks; production build; browser acceptance pending |
-| 7 — V1 quality | Release review and CI implemented; core browser journey confirmed by user | Local clean setup: 200 backend / 105 frontend checks and build passed; hosted Actions, production configuration and staging acceptance remain |
+| 7 — V1 quality | Release review and CI implemented; core browser journey and baseline hosted Actions confirmed by user | Baseline clean setup: 200 backend / 105 frontend checks; production configuration and staging acceptance remain |
+| 7b — Authentication limits | PostgreSQL IP/email budgets, trusted proxy rules, retry UI and expiry cleanup | 240 backend / 113 frontend checks and build passed; local 0007 approved/applied on 2026-09-30 with zero schema differences; new hosted run and staging rate checks remain |
 
 After V1: GitHub integration, focused AI assistance, repository indexing/RAG, background jobs, then team collaboration. At each step, review why the code exists, implement one feature, test its meaningful behavior, and update the documentation.
 

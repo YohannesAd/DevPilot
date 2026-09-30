@@ -426,3 +426,25 @@ error envelope without reflecting exception details. Configured credentialed COR
 and private no-store remain in force. Domain-specific project/issue/comment/label
 404 codes are unchanged. Preflight rejection remains middleware HTTP 400.
 See [release review](release-readiness.md) for security coverage and audits.
+
+## Authentication rate limits
+
+POST /api/auth/login and /api/auth/register now enforce configurable PostgreSQL
+budgets after CSRF/schema validation and before password work. Defaults: login IP
+30/600s, login normalized email 10/900s across IPs, registration IP 5/3600s. Both
+successful and unsuccessful attempts count. Email keys use validated EmailStr,
+NFC, trim and lowercase; known and unknown accounts have identical limit behavior.
+Login credential failures still return generic invalid_credentials/401.
+
+429 returns `{ "error": { "code": "rate_limited", "message": "Too many attempts. Wait before trying again." } }`.
+Retry-After is positive integer seconds (ceiling) until applicable current windows
+expire; CORS exposes it and no-store remains. The response contains no identity,
+credentials or bucket details and does not change the session cookie. Blocked
+requests do not extend expiry; manual retry may encounter quota used by others.
+503 auth_unavailable with Retry-After: 60 denotes limiter storage failure and
+prevents password work. Logout, current-user GET and other resource operations
+retain their existing behavior. Rejected Origins and malformed requests keep
+403/422 and do not spend password-attempt budgets.
+
+The table requires migration 0007, currently pending approval on local devpilot.
+[Complete configuration, proxy trust, retention, tradeoffs and migration review](auth-rate-limits.md).

@@ -32,12 +32,13 @@ process counts, proxy trust IPs or migration credentials have been selected here
 
 ## Decisions required before public exposure
 
-1. **Abuse controls:** implement and test shared ingress rate limits for login
-   and registration plus request body/concurrency/time limits. Argon2 is expensive;
-   the app currently has no rate limiter. CSRF and generic login errors do not
-   stop brute-force attempts or resource exhaustion. Multiple workers need shared
-   limits, not a per-process in-memory counter. Select thresholds, monitoring and
-   failure behavior before enabling public registration.
+1. **Abuse controls:** PostgreSQL-backed login/registration limits are now
+   implemented; deploy only after the reviewed 0007 migration and configure the
+   shared HMAC key, trusted proxies and scheduled expiry cleanup described in
+   [authentication limits](auth-rate-limits.md). Validate thresholds with real
+   traffic. Ingress request body/concurrency/time limits and broader DDoS protection
+   are still required: the limiter intentionally runs after CSRF/body validation.
+   IP rotation and targeted temporary email denial remain possible.
 2. **Recovery and account policy:** password reset, email verification and account
    deletion are not implemented. Decide whether this is a controlled pilot and
    define operator-assisted recovery; do not promise verified mailbox ownership.

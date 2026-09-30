@@ -52,7 +52,8 @@ Production uses `APP_ENV=production`, which enables Secure cookies and requires
 explicit HTTPS frontend/API origins without paths or trailing slashes. Deploy
 same-origin via a controlled proxy or use same-site HTTPS subdomains; unrelated
 cross-site domains are not supported by the Lax cookie policy. TLS termination
-must preserve the browser Origin. Password reset and rate limiting are future work.
+must preserve the browser Origin. Password reset remains future work. Authentication
+rate limits now use PostgreSQL; see [limits and proxy trust](auth-rate-limits.md).
 
 Current-user lookup resolves only the authenticated user's public fields.
 Project routes reuse this session dependency; services/projects.py filters every
@@ -249,3 +250,14 @@ npm test; local .local-checks is no longer a test dependency. HTTP routing error
 now use the same sanitized envelope. useApi catches failed session navigation
 while preserving stale-result cleanup. See [release review](release-readiness.md)
 and [production configuration](deployment.md); CI does not deploy.
+
+## Authentication limiter integration
+
+The auth routes call services/rate_limits.py before credential services. A short
+PostgreSQL transaction spends IP/email budgets and commits before expensive work;
+no account existence lookup or per-worker counter is used. client_ip.py resolves
+only the untouched ASGI peer or a bounded trusted-proxy chain, so deployment must
+use --no-proxy-headers and the explicit application allowlist. Expiry maintenance
+is a bounded command scheduled externally, not a new worker dependency. Storage
+failure prevents new auth attempts. Existing session, ownership, CSRF and Chrome
+stale-result behavior are unchanged. See [operational contract](auth-rate-limits.md).

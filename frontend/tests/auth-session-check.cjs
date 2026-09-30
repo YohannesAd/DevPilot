@@ -132,6 +132,42 @@ async function check(name, run) { await run(); await tick(); assert.equal(unhand
       assert.equal(!!view.container.querySelector('[role=alert]'), !baseline);
       assert.equal(requests.length, 1); await view.close();
     });
+    for (const retryAfter of ['45', null, 'invalid']) {
+      await check(`${mode}: 429 preserves drafts, focuses guidance, and only retries on submission (${retryAfter})`, async () => {
+        const view = await mount(mode, { strict: false });
+        await settle(() => requests[0].resolve(signedOut));
+        const email = view.container.querySelector('[name=email]'); email.value = 'test@example.invalid';
+        const password = view.container.querySelector('[name=password]'); password.value = 'x'.repeat(16);
+        const name = view.container.querySelector('[name=display_name]'); if (name) name.value = 'Test';
+        const submit = () => view.container.querySelector('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+        await settle(submit);
+        await settle(() => requests[1].resolve({ ...response(429, { error: { code: 'rate_limited' } }), headers: { get: () => retryAfter } }));
+        const alert = view.container.querySelector('[role=alert]');
+        assert.match(alert.textContent, /Too many attempts/);
+        assert.match(alert.textContent, retryAfter === '45' ? /45 seconds/ : /few minutes/);
+        assert.equal(document.activeElement, alert);
+        assert.equal(email.value, 'test@example.invalid'); assert.equal(password.value, 'x'.repeat(16));
+        if (name) assert.equal(name.value, 'Test');
+        assert.equal(view.container.querySelector('button[type=submit]').disabled, false);
+        await settle(); await settle(); assert.equal(requests.length, 2); assert.equal(redirects.length, 0);
+        await settle(submit); assert.equal(requests.length, 3);
+        assert.deepEqual(JSON.parse(requests[2].options.body), JSON.parse(requests[1].options.body));
+        await settle(() => requests[2].resolve(response(mode === 'register' ? 201 : 200, {})));
+        assert.equal(redirects.length, 1); await view.close();
+      });
+    }
+    await check(`${mode}: unavailable rate-limit storage preserves drafts and gives retry guidance`, async () => {
+      const view = await mount(mode, { strict: false });
+      await settle(() => requests[0].resolve(signedOut));
+      view.container.querySelector('[name=email]').value = 'test@example.invalid';
+      view.container.querySelector('[name=password]').value = 'x'.repeat(16);
+      const name = view.container.querySelector('[name=display_name]'); if (name) name.value = 'Test';
+      await settle(() => view.container.querySelector('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })));
+      await settle(() => requests[1].resolve(response(503, { error: { code: 'auth_unavailable' } })));
+      assert.match(view.container.querySelector('[role=alert]').textContent, /temporarily unavailable.*minute/);
+      assert.equal(view.container.querySelector('[name=password]').value, 'x'.repeat(16));
+      assert.equal(requests.length, 2); await view.close();
+    });
     await check(`${mode}: valid form submission keeps its existing redirect`, async () => {
       const view = await mount(mode, { strict: false });
       await settle(() => requests[0].resolve(signedOut));

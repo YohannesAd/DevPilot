@@ -116,3 +116,17 @@ review/change its constraint deliberately and regenerate; inspect the full diff,
 repeat clean installs, tests and build. Do not use npm audit fix --force. Tools
 may need your organization's trusted CA configuration on managed Windows machines;
 never disable certificate validation. CI uses public TLS trust on hosted runners.
+
+## Authentication limit checks
+
+The full suite includes deterministic limiter cases with an injected database
+clock, concurrent HTTP clients and independent DB pools. Feature-test thresholds
+are explicitly high so unrelated fixtures cannot exhaust auth quotas; dedicated
+limiter cases use small values. Test cleanup includes auth_rate_limits. Migration
+and cleanup tests use only devpilot_test. New form checks simulate 429/503, parsed
+retry guidance, retained drafts, focused alerts and manual-only retry.
+
+The user confirmed the previous hosted Actions run passed. This new milestone's
+hosted run remains pending. Local devpilot was upgraded to 0007 after explicit
+approval on 2026-09-30; the read-only schema checker reports zero differences.
+[Migration review and limiter-specific commands](auth-rate-limits.md).

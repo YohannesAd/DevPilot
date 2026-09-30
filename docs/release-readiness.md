@@ -1,6 +1,9 @@
 # V1 release-readiness review
 
-Review date: 2026-09-29. This review inspected source, schemas, services,
+Review date: 2026-09-29. Historical baseline below; the authentication rate-limit
+milestone update is at the end. The user subsequently confirmed hosted GitHub
+Actions and local browser/frontend checks passed for that baseline.
+This review inspected source, schemas, services,
 migrations, tests and configuration and reran verification from a source-only
 copy. The user's real-browser confirmation is recorded as user-provided evidence;
 this review did not perform an independent browser or production test.
@@ -9,7 +12,7 @@ this review did not perform an independent browser or production test.
 
 | Priority | Finding | Resolution / remaining work |
 | --- | --- | --- |
-| High, deployment gate | Public login/registration have no rate limiting or request/concurrency limits; password hashing is expensive | Select/test shared ingress controls before public exposure. Do not pretend CSRF or per-worker counters solve abuse. See deployment.md |
+| High, deployment gate | Authentication rate limiting was missing; ingress body/concurrency controls still needed | PostgreSQL limiter now implemented (see milestone update); 0007 approved and applied locally. Configure proxy trust/cleanup before deployment; ingress controls remain |
 | High, dependency | npm audit identified vulnerable PostCSS through Next, including arbitrary source-map file reads | Added an exact PostCSS 8.5.28 override, preserving Next 15.5.26 and installed React versions; clean build/tests/audit passed. No forced major upgrade |
 | High, reproducibility | Three tracked UI harnesses required ignored jsdom; 57 checks lived only in .local-checks; no CI | Promoted harnesses to frontend/tests, locked jsdom, added npm test runner and PR/push CI with immutable action SHAs |
 | Medium, error handling | useApi's 401 catch could itself reject if router.replace throws | Catch navigation failure and expose a session error while retaining stale/unmount guards; one new regression check |
@@ -132,3 +135,56 @@ in [deployment.md](deployment.md), plus production Chrome/Edge and keyboard/mobi
 acceptance. Set an owner for dependency monitoring and rate-limit/recovery policy.
 No deployment, commit or push was performed. Exact shell/directory-labeled local
 commands are in [README](../README.md) and [testing](testing.md).
+
+## Authentication rate-limit milestone
+
+The previous hosted Actions and local browser checks were subsequently confirmed
+by the user. This milestone has not been pushed or run on hosted Actions.
+
+Implemented shared PostgreSQL IP budgets for login/registration and an additional
+normalized-email login budget, before password work. Atomic UPSERTs commit before
+authentication; errors and successful requests count, blocked retries never extend
+windows, and missing storage fails closed. Explicit proxy trust replaces arbitrary
+forwarded-header use. CORS exposes Retry-After and 429 uses the public error format.
+Frontend login/register alerts preserve drafts and require manual retry. No runtime
+dependencies or per-process limiter were added.
+
+**Actual checks:** full guarded PostgreSQL suite **240 passed, 1 existing warning
+in 79.23s** (40 new limiter cases); **113 frontend simulations passed**, zero
+unhandled rejections; production build and TypeScript validation passed. Tests
+cover thresholds, clock-controlled expiry without sleeps, concurrent HTTP login
+IP/email and registration attempts, independent clients/pools, normalization and
+unknown users, trusted/untrusted chains, malformed proxy values, unavailable
+storage, session preservation, bounded/locked cleanup and backlog reporting.
+Isolated migration downgrade/upgrade preserves all seven existing application
+tables; post-test schema check reports 0007_auth_rate_limits and zero differences.
+The test PostgreSQL cluster is stopped after verification.
+
+After explicit approval on 2026-09-30, read-only checks confirmed **devpilot at
+0006_comments_labels** before upgrading to **0007_auth_rate_limits**. Subsequent
+read-only verification reported zero schema differences, confirming the counter
+table, constraint and expiry index. No development downgrade or other database
+change was performed. [SQL, effects and exact commands](auth-rate-limits.md).
+
+Changed-file responsibilities:
+
+| Files | Responsibility |
+| --- | --- |
+| backend/app/config.py; backend/.env.example | Validated limits/windows, shared HMAC secret, explicit proxy allowlist |
+| backend/app/client_ip.py | Untouched peer resolution and bounded trusted X-Forwarded-For chain handling |
+| backend/app/services/rate_limits.py | Atomic committed budgets, expiry, bounded cleanup, fail-closed storage handling |
+| backend/app/models.py; backend/alembic/versions/0007_auth_rate_limits.py | Counter model/table/index/check, preserving existing schema and data |
+| backend/app/routes/auth.py; main.py; security.py | Pre-password enforcement, sanitized 429/503, Retry-After exposure with existing CORS/CSRF/cookies |
+| backend/scripts/prune_rate_limits.py | Target-checked bounded expiry maintenance and backlog exit status |
+| backend/tests/conftest.py; test_rate_limits.py | Isolated counters/configuration and deterministic PostgreSQL/HTTP/migration coverage |
+| frontend/lib/api.ts; components/AuthForm.tsx; tests/auth-session-check.cjs | Retry header parsing, accessible draft-preserving guidance, eight new form simulations |
+| README.md; docs/auth-rate-limits.md; api.md; deployment.md; database.md; architecture.md; roadmap.md; release-readiness.md; testing.md | Contracts, proxy assumptions, retention schedule, migration gate, evidence and commands |
+
+Remaining limitations/gates: approve local migration; configure a shared random
+production key; launch with --no-proxy-headers; select narrow trusted proxies;
+schedule and monitor one-minute expiry cleanup. Ingress body/concurrency/DDoS
+controls and recovery decisions remain. NAT users share quotas; IP rotation and
+sustained targeted temporary email denial are possible. No account is permanently
+locked. Verify the real proxy, multi-worker restart and idle cleanup behavior on
+staging, and exercise the 429 UI in Chrome/Edge after migration. HTTP/jsdom checks
+are not real browser or deployed reverse-proxy verification. No deploy/commit/push.
