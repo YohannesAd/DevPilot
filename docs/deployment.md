@@ -1,5 +1,8 @@
 # Production configuration and release decisions
 
+For the implemented Vercel Hobby / Render Free / Neon Free setup, follow the
+[step-by-step staging guide](staging.md), including trust, backups and rollback.
+
 DevPilot is ready for staging verification after CI passes, not an automatically
 approved public deployment. Core features were confirmed in the user's browser;
 production infrastructure and browser security behavior need separate acceptance.
@@ -12,10 +15,10 @@ production infrastructure and browser security behavior need separate acceptance
 | Backend DATABASE_URL | Dedicated PostgreSQL connection from the host's secret store; TLS with server verification appropriate to the provider |
 | Backend FRONTEND_ORIGIN | Exact public HTTPS origin; no path, wildcard, query or trailing slash |
 | Backend API_ORIGIN | Exact public HTTPS API origin; trusted Origin for API-hosted interactions |
-| Frontend NEXT_PUBLIC_API_URL | Public API origin supplied **at build time**, without trailing slash; public configuration, never credentials |
+| Backend API_PROXY_SECRET | Same private 64-hex secret as Vercel; mandatory in production |
+| Frontend API_BACKEND_ORIGIN / API_PROXY_MODE / API_PROXY_SECRET | Server-only HTTPS backend origin, vercel mode and shared proxy secret; see staging guide |
 
-Choose either one HTTPS origin with a proxy forwarding /api to FastAPI, or HTTPS
-subdomains of the same site (for example app.example.com and api.example.com).
+The implemented arrangement uses one browser origin with a Next.js /api proxy to FastAPI.
 SameSite=Lax cookies do not support unrelated cross-site frontend/API domains.
 The session cookie is host-only, HttpOnly, Secure in production, Path=/, with a
 seven-day fixed lifetime. Database revocation/expiration is checked on each
@@ -25,10 +28,9 @@ and registration. The proxy must preserve Origin and must not cache private API
 responses or Set-Cookie. Only trust forwarded headers from the controlled proxy.
 
 Use Python 3.13, Node 22.13+ within 22.x, PostgreSQL 18 and the committed locks.
-The runtime Python lock excludes pytest/httpx. Build the frontend with the final
-public API URL; a changed API URL requires rebuilding. Run Next production start
-and Uvicorn without --reload under the chosen process supervisor. No hosts,
-process counts, proxy trust IPs or migration credentials have been selected here.
+The runtime Python lock excludes pytest/httpx. Server-only proxy settings are
+validated at build/start. Run Uvicorn without --reload and with --no-proxy-headers.
+The selected staging topology and provider steps are in [staging.md](staging.md).
 
 ## Decisions required before public exposure
 
@@ -51,7 +53,7 @@ process counts, proxy trust IPs or migration credentials have been selected here
 4. **Edge and hosting:** HTTPS certificates, domain ownership, proxy routing,
    trusted forwarding, request limits and security headers (HSTS after HTTPS is
    verified; CSP must be tested with Next) are deployment responsibilities.
-   Decide whether public /docs and /openapi.json should be exposed. Keep PostgreSQL
+   Production /docs and /openapi.json require the proxy secret. Keep PostgreSQL
    private and avoid sharing CI superuser privileges with the runtime.
 5. **Operations:** select logging/error monitoring, redact passwords, cookies,
    authorization headers and database URLs, set availability alerts and a rollback

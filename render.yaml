@@ -1,0 +1,28 @@
+# Optional Blueprint; importing it creates resources only when an operator chooses.
+services:
+  - type: web
+    name: devpilot-staging-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: python -m pip install --require-hashes -r requirements.lock
+    startCommand: python -m scripts.check_config && python -m uvicorn app.main:app --host 0.0.0.0 --port "$PORT" --no-proxy-headers
+    healthCheckPath: /api/health
+    autoDeployTrigger: 'off'
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.3
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: API_ORIGIN
+        sync: false
+      - key: API_PROXY_SECRET
+        sync: false
+      - key: AUTH_RATE_KEY_SECRET
+        sync: false
+      - key: AUTH_TRUSTED_PROXY_CIDRS
+        value: ""

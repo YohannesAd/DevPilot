@@ -67,6 +67,12 @@ Alembic head and ORM metadata agreement. It never applies or rolls back migratio
 
 ## Run locally
 
+The browser now calls same-origin `/api/...`; Next forwards to FastAPI. In
+frontend/.env.local use `API_PROXY_MODE=local` and
+`API_BACKEND_ORIGIN=http://localhost:8000` (server-only). Remove the obsolete
+NEXT_PUBLIC_API_URL. Existing local backend settings remain unchanged. For a
+production build run locally, explicitly retain `API_PROXY_MODE=local`.
+
 **PowerShell, backend terminal; starting directory: `<repo>\backend`:**
 
 ```powershell
@@ -92,14 +98,17 @@ npm.cmd test
 npm.cmd audit --audit-level=moderate
 ```
 
-Frontend checks use real React DOM in jsdom with simulated fetch/router. They
-are not real browser tests and now run entirely from repository dependencies.
+Frontend checks use React DOM in jsdom plus loopback HTTP proxy checks. They
+are not real browser tests and run entirely from repository dependencies.
 Stop the frontend dev server before building because both use .next.
 
 **PowerShell; starting directory: `<repo>\frontend`:**
 
 ```powershell
+$env:API_PROXY_MODE = 'local'
+$env:API_BACKEND_ORIGIN = 'http://localhost:8000'
 npm.cmd run build
+if ($LASTEXITCODE -eq 0) { node tests/proxy-check.cjs --next }
 ```
 
 Backend tests intentionally truncate and migrate their database. They accept only
@@ -116,6 +125,7 @@ limiter changes still require their own hosted run after you choose to push.
   [roadmap](docs/roadmap.md).
 - [Release review: findings, coverage, verification and changed files](docs/release-readiness.md).
 - [Production configuration and deployment decisions](docs/deployment.md).
+- [Vercel / Render / Neon staging setup, migration, backup and rollback](docs/staging.md).
 - [Authentication limits, proxy trust, retention and migration review](docs/auth-rate-limits.md).
 - [Testing and dependency maintenance](docs/testing.md).
 - [Historical milestones and inventories](docs/milestone-history.md) are archived

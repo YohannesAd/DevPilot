@@ -1,5 +1,49 @@
 # V1 release-readiness review
 
+## Staging preparation update (2026-09-30)
+
+Implemented same-origin browser /api calls through a Node Next.js handler to Render.
+The server-only destination and shared proxy credential replace the obsolete
+NEXT_PUBLIC_API_URL. The authenticated edge-derived IP prevents all users sharing
+Render's peer-IP bucket; invalid IPs or direct backend access fail closed. Preserve
+sessions, ownership, exact Origin checks, Secure/HttpOnly/Lax cookies, response
+status/Retry-After and no-store. Gateway/cold-start errors preserve auth drafts and
+never automatically retry mutations. No new dependency, schema migration or cloud
+resource. [Provider setup, trust, backup and rollback guide](staging.md).
+
+Actual local checks: **256 backend tests passed, 1 existing Starlette warning,
+109.81s**. Test PostgreSQL remained at 0007 with zero schema differences and was
+stopped afterward. **117 frontend simulations and 21 proxy checks passed**.
+The production build passed, followed by **18 actual Next production HTTP proxy
+checks** against a loopback upstream (not browser/provider verification). Backend
+production configuration validated using public fixtures without a DB connection;
+actionlint passed (shellcheck disabled/unavailable), as did git diff whitespace
+checks. No hosted Actions run, deployment, remote migration, real HTTPS browser
+check or remote backup/restore occurred. Local devpilot was not modified.
+
+During verification, a configuration test initially inspected the test fixture's
+replacement getter; it now captures the real getter before that replacement. A
+mixed dev/production .next cache initially prevented the HTTP harness from starting;
+rebuilding resolved it. Keep dev servers stopped during production builds.
+
+| Changed files | Responsibilities |
+| --- | --- |
+| frontend/lib/server/proxy-config.ts; next.config.ts | Validate server-only destination/mode/secret at build and runtime |
+| frontend/lib/server/api-proxy.ts; app/api/[...path]/route.ts | Bounded uncached forwarding, cookies, verified edge IP, secret and timeout handling |
+| frontend/lib/api.ts; components/AuthForm.tsx; .env.example | Relative browser URLs, JSON/non-JSON gateway guidance, retained drafts, local/staging settings |
+| backend/app/config.py; security.py; client_ip.py; .env.example | Production TLS/proxy configuration, direct-access gate, verified client-IP precedence |
+| backend/scripts/check_config.py; render.yaml | Secret-safe startup validation and minimal manual-deploy Render configuration |
+| backend/tests/test_proxy.py; tests/conftest.py | Isolated proxy/security/config regression coverage |
+| frontend/tests/proxy-check.cjs; auth-session-check.cjs; filter-dashboard-check.cjs; run.cjs | Real loopback proxy tests, DOM cold-start tests and relative-URL expectations |
+| .github/workflows/checks.yml | Safe local proxy settings and production Next HTTP checks; no deployment |
+| README; docs/staging, deployment, API, architecture, database, auth-rate-limits, testing, roadmap, release-readiness | Setup, trust, accurate status, commands and outstanding decisions |
+
+Remaining gates: validate real Vercel header overwrite and two-client rate budgets,
+HTTPS cookies/CSRF/ownership, Render cold starts, Neon TLS/schema, cleanup scheduling,
+quota monitoring, backup/restore and paired rollback. Account recovery remains
+unimplemented and a release-policy decision. Render Blueprint acceptance and a
+hosted run of the updated workflow are not implied by local validation.
+
 Review date: 2026-09-29. Historical baseline below; the authentication rate-limit
 milestone update is at the end. The user subsequently confirmed hosted GitHub
 Actions and local browser/frontend checks passed for that baseline.
@@ -180,7 +224,7 @@ Changed-file responsibilities:
 | frontend/lib/api.ts; components/AuthForm.tsx; tests/auth-session-check.cjs | Retry header parsing, accessible draft-preserving guidance, eight new form simulations |
 | README.md; docs/auth-rate-limits.md; api.md; deployment.md; database.md; architecture.md; roadmap.md; release-readiness.md; testing.md | Contracts, proxy assumptions, retention schedule, migration gate, evidence and commands |
 
-Remaining limitations/gates: approve local migration; configure a shared random
+Remaining limitations/gates: local migration is now applied; configure a shared random
 production key; launch with --no-proxy-headers; select narrow trusted proxies;
 schedule and monitor one-minute expiry cleanup. Ingress body/concurrency/DDoS
 controls and recovery decisions remain. NAT users share quotas; IP rotation and

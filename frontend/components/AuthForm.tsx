@@ -62,6 +62,11 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
         setPending(false); submitting.current = false;
         return;
       }
+      if (code === "proxy_unavailable") {
+        setError("The service may be waking up. Wait a minute, then try signing in. If you were registering, try signing in before registering again. Your details are kept.");
+        setPending(false); submitting.current = false;
+        return;
+      }
       if (code === "auth_unavailable") {
         setError("Sign in and registration are temporarily unavailable. Your details are kept. Please try again in a minute.");
         setPending(false); submitting.current = false;

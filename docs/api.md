@@ -1,5 +1,13 @@
 # V1 REST API sketch
 
+Browser requests now use same-origin `/api/...` through the Next.js server proxy.
+In production Render requires authenticated proxy headers (except public health),
+while session/ownership/CSRF checks remain unchanged. Set-Cookie, Cookie, Origin,
+query strings, JSON bodies, status and Retry-After are preserved and responses are
+uncached. Proxy transport timeouts return 503 `proxy_unavailable`; oversized bodies
+return 413 `request_too_large`. Mutations are never automatically retried.
+[Deployment and trust details](staging.md).
+
 All routes use `/api`. Request and response bodies are JSON. IDs are UUIDs. Protected endpoints require the session cookie. The authenticated user is inferred from the cookie, never accepted as an owner ID in request JSON.
 
 | Method | Path | Purpose |

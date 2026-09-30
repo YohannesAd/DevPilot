@@ -70,7 +70,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      API_PROXY_MODE: local
+      API_BACKEND_ORIGIN: http://localhost:8000
       NEXT_TELEMETRY_DISABLED: '1'
     defaults:
       run:
@@ -90,5 +91,7 @@ jobs:
         run: npm test
       - name: Production build and type validation
         run: npm run build
+      - name: Production Next proxy HTTP checks (not browser tests)
+        run: node tests/proxy-check.cjs --next
       - name: Audit runtime and test dependencies
         run: npm audit --audit-level=moderate

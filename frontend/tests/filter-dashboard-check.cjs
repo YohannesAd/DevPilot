@@ -113,7 +113,7 @@ async function check(name, run) { await run(); await tick(); assert.equal(unhand
   const boardLink=[...v.container.querySelectorAll('a')].find(x=>x.textContent==='Board').getAttribute('href');
   window.history.replaceState({},'',boardLink); await v.render();
   assert.match(issueRequests()[2].url,/limit=100&offset=0/);
-  for(const key of ['status','priority','type','label_id','q']) assert.equal(new URL(issueRequests()[0].url).searchParams.get(key),new URL(issueRequests()[2].url).searchParams.get(key));
+  for(const key of ['status','priority','type','label_id','q']) assert.equal(new URL(issueRequests()[0].url, 'http://localhost:3000').searchParams.get(key),new URL(issueRequests()[2].url, 'http://localhost:3000').searchParams.get(key));
   await settle(()=>issueRequests()[2].resolve(page([issue]))); assert.match(v.container.textContent,/Matching task/);
   window.history.replaceState({},'',`/projects/${projectId}${query}`); await v.render();
   assert.match(issueRequests()[3].url,/limit=20&offset=0/); await settle(()=>issueRequests()[3].resolve(page([issue])));

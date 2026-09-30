@@ -22,6 +22,8 @@ def isolated_auth_settings(monkeypatch):
     monkeypatch.setenv("APP_ENV", "development")
     monkeypatch.setenv("FRONTEND_ORIGIN", "http://localhost:3000")
     monkeypatch.setenv("API_ORIGIN", "http://localhost:8000")
+    monkeypatch.delenv("API_PROXY_SECRET", raising=False)
+    config.get_proxy_settings.cache_clear()
     for name in list(os.environ):
         if name.startswith("AUTH_RATE_") or name.startswith("AUTH_LOGIN_") or name.startswith("AUTH_REGISTER_") or name == "AUTH_TRUSTED_PROXY_CIDRS":
             monkeypatch.delenv(name)
@@ -33,6 +35,7 @@ def isolated_auth_settings(monkeypatch):
     config.get_auth_settings.cache_clear()
     app.middleware_stack = None
     yield
+    config.get_proxy_settings.cache_clear()
     config.get_auth_settings.cache_clear()
     config.get_rate_limit_settings.cache_clear()
     app.middleware_stack = None

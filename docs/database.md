@@ -1,5 +1,11 @@
 # V1 database relationship design
 
+Staging preparation adds no migration. Local head remains 0007_auth_rate_limits;
+the future Neon staging database must be separate and migrate through 0007 with
+reviewed commands. No local data is copied. Use verified TLS, a direct endpoint,
+separate runtime/migration roles, and a disposable backup-restore target as in
+[the staging guide](staging.md). No remote database was modified.
+
 ```mermaid
 erDiagram
   USER ||--o{ PROJECT : owns

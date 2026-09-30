@@ -5,7 +5,7 @@ export class ApiError extends Error {
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}${path}`, {
+    response = await fetch(path, {
       ...options, credentials: "include", cache: "no-store",
       headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...options.headers },
     });
@@ -14,7 +14,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     const data = await response.json().catch(() => null);
     const retry = response.headers?.get("Retry-After");
     const seconds = retry && /^\d+$/.test(retry) ? Number(retry) : undefined;
-    throw new ApiError(response.status, data?.error?.code ?? "request_failed", "Something went wrong. Please try again.",
+    throw new ApiError(response.status, data?.error?.code ?? ([502, 503, 504].includes(response.status) ? "proxy_unavailable" : "request_failed"), "Something went wrong. Please try again.",
       seconds !== undefined && Number.isSafeInteger(seconds) && seconds > 0 ? seconds : undefined);
   }
   return response.status === 204 ? undefined as T : response.json();

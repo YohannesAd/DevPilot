@@ -1,9 +1,15 @@
 # V1 architecture
 
+Staging uses a Node Next.js route at `/api/[...path]` to forward same-origin browser
+requests to Render. Server-only configuration and a shared proxy secret protect
+the backend; validated Vercel client-IP metadata drives rate limits. Cookies and
+Origin pass through unchanged, responses are uncached, and mutation failures are
+never automatically retried. [Trust and deployment contract](staging.md).
+
 ```mermaid
 flowchart LR
-  U["Developer browser"] --> W["Next.js UI"]
-  W -->|"REST + cookie"| A["FastAPI"]
+  U["Developer browser"] --> W["Next.js UI and same-origin API proxy"]
+  W -->|"REST + cookie + authenticated client IP"| A["FastAPI"]
   A -->|"SQLAlchemy"| D[(PostgreSQL)]
 ```
 

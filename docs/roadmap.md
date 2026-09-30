@@ -1,5 +1,11 @@
 # Build order and progress
 
+Staging preparation: same-origin API proxy, authenticated client-IP forwarding,
+Render configuration, provider setup/backup/rollback guide and regression checks
+are implemented. No deployment or remote migration performed. Real HTTPS/edge,
+cleanup scheduling, account recovery and restore acceptance remain gates; see
+[staging.md](staging.md).
+
 | Milestone | Work | Check |
 | --- | --- | --- |
 | 0 — Product and design | PRD, architecture, relationships, API sketch, screens | Complete |

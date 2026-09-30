@@ -1,5 +1,30 @@
 # Testing and dependency maintenance
 
+## Staging proxy checks
+
+The normal frontend test runner includes proxy checks using a real loopback HTTP
+upstream and simulated Vercel metadata. After building, a second harness starts
+the actual Next production server on a temporary loopback port. Neither is browser
+or provider-edge verification. Stop any dev server before building to avoid mixed
+development/production files in .next.
+
+**PowerShell; starting directory: `<repo>\frontend`:**
+
+```powershell
+$env:API_PROXY_MODE = 'local'
+$env:API_BACKEND_ORIGIN = 'http://localhost:8000'
+npm.cmd test
+if ($LASTEXITCODE -ne 0) { throw 'Frontend checks failed.' }
+npm.cmd run build
+if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
+node tests/proxy-check.cjs --next
+```
+
+Backend test_proxy.py uses the same guarded disposable PostgreSQL fixture as the
+suite below. It verifies proxy credentials, forwarded-IP separation/spoofing,
+Origin checks, secure sessions and configuration rejection. No test targets Neon
+or local devpilot. Provider setup and remaining HTTPS checks are in [staging](staging.md).
+
 All commands below label shell and starting directory. `<repo>` is the repository
 root (locally C:\Users\yohan_0namuao\Downloads\DevPilot-starter).
 

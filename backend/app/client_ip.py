@@ -11,6 +11,9 @@ def address(value):
 
 
 def client_ip(request: Request, trusted_proxies: tuple) -> str:
+    verified = getattr(request.state, "verified_client_ip", None)
+    if verified is not None:
+        return verified  # Set only by the authenticated proxy middleware.
     try:
         peer = address(request.client.host) if request.client else None
     except ValueError:

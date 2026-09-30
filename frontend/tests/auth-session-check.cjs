@@ -168,6 +168,20 @@ async function check(name, run) { await run(); await tick(); assert.equal(unhand
       assert.equal(view.container.querySelector('[name=password]').value, 'x'.repeat(16));
       assert.equal(requests.length, 2); await view.close();
     });
+    for (const gatewayBody of [{ error: { code: 'proxy_unavailable' } }, null]) await check(`${mode}: cold-start failure preserves draft and never retries (${gatewayBody ? 'JSON' : 'provider non-JSON'})`, async () => {
+      const view = await mount(mode, { strict: false });
+      await settle(() => requests[0].resolve(signedOut));
+      view.container.querySelector('[name=email]').value = 'test@example.invalid';
+      view.container.querySelector('[name=password]').value = 'x'.repeat(16);
+      const name = view.container.querySelector('[name=display_name]'); if (name) name.value = 'Test';
+      await settle(() => view.container.querySelector('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })));
+      await settle(() => requests[1].resolve(gatewayBody ? response(503, gatewayBody) : { status: 503, ok: false, json: async () => { throw new SyntaxError('Synthetic provider HTML'); } }));
+      assert.match(view.container.querySelector('[role=alert]').textContent, /waking up.*Wait a minute/);
+      assert.equal(view.container.querySelector('[name=password]').value, 'x'.repeat(16));
+      assert.equal(view.container.querySelector('[name=email]').value, 'test@example.invalid');
+      if (name) assert.equal(name.value, 'Test');
+      await settle(); assert.equal(requests.length, 2); await view.close();
+    });
     await check(`${mode}: valid form submission keeps its existing redirect`, async () => {
       const view = await mount(mode, { strict: false });
       await settle(() => requests[0].resolve(signedOut));

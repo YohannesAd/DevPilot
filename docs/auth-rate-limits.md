@@ -84,6 +84,12 @@ historical rows according to the separate backup-retention policy.
 
 ## Client-IP and trusted proxy contract
 
+For Vercel/Render staging, use the authenticated proxy integration in
+[staging.md](staging.md): Vercel's edge-derived IP is relayed with a shared server
+secret and validated by Render. It takes precedence over network-peer resolution.
+Keep AUTH_TRUSTED_PROXY_CIDRS empty there; production requires API_PROXY_SECRET.
+The CIDR rules below describe direct/local deployments without that integration.
+
 Start Uvicorn with **--no-proxy-headers**. Do not wrap the app with another component
 that rewrites ASGI scope.client from arbitrary forwarded headers. The application
 requires the untouched network peer; a hosting platform that rewrites it needs an

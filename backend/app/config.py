@@ -1,6 +1,7 @@
 """Local environment configuration; no credentials belong in source code."""
 
 import os
+import re
 from ipaddress import ip_network
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -27,7 +28,23 @@ def get_database_url() -> URL:
         raise RuntimeError("DATABASE_URL must use postgresql+psycopg://.")
     if not url.host or not url.database or not url.username:
         raise RuntimeError("DATABASE_URL must specify a host, database, and username.")
+    if os.environ.get("APP_ENV") == "production" and url.query.get("sslmode") != "verify-full":
+        raise RuntimeError("Production DATABASE_URL requires sslmode=verify-full and a trusted CA.")
     return url.set(drivername="postgresql+psycopg")
+
+
+@dataclass(frozen=True)
+class ProxySettings:
+    secret: str = field(repr=False)
+
+
+@lru_cache
+def get_proxy_settings() -> ProxySettings:
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
+    secret = os.environ.get("API_PROXY_SECRET", "")
+    if (get_auth_settings().secure_cookie or secret) and not re.fullmatch(r"[a-fA-F0-9]{64}", secret):
+        raise RuntimeError("API_PROXY_SECRET must be a shared 32-byte random secret encoded as 64 hex characters.")
+    return ProxySettings(secret)
 
 
 @dataclass(frozen=True)
