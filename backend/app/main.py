@@ -5,9 +5,11 @@ from fastapi.responses import JSONResponse
 from app.routes.auth import router as auth_router
 from app.routes.users import router as users_router
 from app.routes.projects import router as projects_router
+from app.routes.issues import router as issues_router
 from app.security import SecurityMiddleware
 from app.services.auth import AuthenticationRequired, InvalidCredentials
 from app.services.projects import ProjectArchived, ProjectNotFound
+from app.services.issues import IssueNotFound
 
 app = FastAPI(title="DevPilot API")
 
@@ -16,6 +18,14 @@ app.add_middleware(SecurityMiddleware)
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(projects_router)
+app.include_router(issues_router)
+
+
+@app.exception_handler(IssueNotFound)
+async def issue_not_found(_request: Request, _exc: IssueNotFound) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"error": {
+        "code": "issue_not_found", "message": "Issue not found.",
+    }})
 
 
 @app.exception_handler(ProjectArchived)

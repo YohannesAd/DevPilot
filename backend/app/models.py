@@ -72,3 +72,30 @@ class Project(Base):
         CheckConstraint("length(trim(name)) > 0", name="ck_projects_name_not_blank"),
         Index("ix_projects_owner_created_id", "owner_id", "created_at", "id"),
     )
+
+
+class Issue(Base):
+    __tablename__ = "issues"
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    project_id: Mapped[UUID] = mapped_column(
+        ForeignKey("projects.id", name="fk_issues_project_id_projects"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    type: Mapped[str] = mapped_column(String(16), nullable=False, server_default="task")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="todo")
+    priority: Mapped[str] = mapped_column(String(16), nullable=False, server_default="medium")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint("length(title) BETWEEN 1 AND 200 AND title ~ '[^[:space:]]'", name="ck_issues_title"),
+        CheckConstraint("description IS NULL OR length(description) <= 10000", name="ck_issues_description"),
+        CheckConstraint("type IN ('task', 'bug', 'feature')", name="ck_issues_type"),
+        CheckConstraint("status IN ('backlog', 'todo', 'in_progress', 'review', 'done')", name="ck_issues_status"),
+        CheckConstraint("priority IN ('low', 'medium', 'high', 'urgent')", name="ck_issues_priority"),
+        Index("ix_issues_project_created_id", "project_id", "created_at", "id"),
+    )

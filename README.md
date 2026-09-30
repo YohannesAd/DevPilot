@@ -4,7 +4,11 @@ DevPilot is a workspace for individual developers to organize projects and track
 
 ## First coding milestone
 
-This repository began with a small vertical slice: a FastAPI health endpoint and a Next.js page that fetches it. PostgreSQL persistence, accounts, persistent sessions and private projects are now implemented. The frontend includes a welcome page, registration/login, dashboard, project creation/list/detail/edit/archive/restore and account/logout. Issues and boards remain future work. The new project management code requires migration `0004_project_archival`, which awaits explicit approval before application to local `devpilot`.
+This repository began with a small vertical slice: a FastAPI health endpoint and a Next.js page that fetches it. Accounts, persistent sessions, private project management and core issues are implemented. Owners can create, list, view, edit and change issue status inside projects. Local migration `0004_project_archival` is applied. `0005_create_issues` is also approved, applied, and verified on local `devpilot`. Board, comments, labels, assignment, issue archival/deletion, GitHub and AI remain deferred.
+
+For the existing Windows setup, use the terminal/directory-labeled commands in
+**Core issues: local commands and acceptance** below. Migration 0005 is already
+applied locally. Historical setup sections remain reference material for new installations.
 
 ## Open in VS Code
 
@@ -38,10 +42,10 @@ and running `SELECT current_database(), current_user;` confirmed `devpilot` and
 Alembic revision `0001_create_users` has been applied and verified in this local
 database. Login uses the additive `0002_create_sessions` migration. The Projects milestone
 added `0003_create_projects`, which is applied to your local devpilot database.
-A read-only check confirmed revision `0003_create_projects` during this milestone.
-The new `0004_project_archival` migration has NOT been applied locally; review it
-below and obtain the user's explicit approval before applying it. The new code
-requires 0004, so a reload-enabled API can pick up code before its schema is ready.
+A read-only check during the issues milestone confirmed `0004_project_archival`.
+It was approved and applied previously. After explicit user approval,
+`0005_create_issues` was applied to local devpilot. Alembic reports 0005 (head)
+and no schema drift; all four existing project records were preserved.
 
 Other developers setting up a **new computer** must install and start PostgreSQL
 and create their own local role and database. Only on a new setup, connect as a
@@ -74,7 +78,7 @@ alembic current
 alembic check
 ```
 
-After upgrading, the current revision should be `0004_project_archival (head)`, and `alembic check`
+After upgrading a new database to head, the revision should be `0005_create_issues`, and `alembic check`
 should report no new upgrade operations. Migrations are explicit; starting the
 API never creates or modifies tables. The health route does not query the database.
 
@@ -247,7 +251,7 @@ logout through the shared `frontend/lib/api.ts` helper.
 
 Tests require an explicit `TEST_DATABASE_URL` for a local database named exactly
 `devpilot_test`. They never fall back to `DATABASE_URL` or read `backend/.env`.
-They apply all four migrations and **clear the test projects, sessions and users tables before and
+They apply all five migrations and **clear the test issues, projects, sessions and users tables before and
 after each test**. Never use this database for data you want to keep.
 
 One-time setup for developers who do not yet have that test database: in Windows
@@ -315,9 +319,187 @@ states. Desktop/mobile screenshots and their review gallery are in
 
 ## Next step
 
-Review and explicitly approve migration 0004 before applying it to devpilot, then
-verify the signed-in edit/archive/restore flow. Issues and boards remain future work.
+Migration 0005 is applied. Complete real-browser checks of core issue
+creation/edit/status persistence and archived read-only behavior.
 See `docs/roadmap.md` for the build order.
+
+## Core issues: local commands and acceptance
+
+The issue contract preserves the PRD's five statuses (Backlog, Todo, In Progress,
+Review, Done) and four priorities (Low, Medium, High, Urgent). Defaults are Task,
+Todo, Medium. Title is trimmed and required, 1–200 characters; optional plain-text
+description is limited to 10,000 characters. Omitted PATCH fields stay unchanged;
+null/blank description clears it. Other null or unsupported fields are rejected.
+
+Open a project to view its paginated issues and Create issue form. Open an issue
+to edit details or status. Archived projects/issues remain readable, but creation
+and updates require restoration. Existing session/CSRF/owner checks apply to every
+endpoint, including direct issue URLs. Status/type/priority are displayed as text.
+The cleanup fix in useApi and the welcome page is preserved: stale results are
+ignored, without calling abort() during effect cleanup.
+
+### Migration review: 0005 (approved and applied to devpilot)
+
+The new project detail page requests issues immediately. The missing issues
+table caused this section to fail while local devpilot was at 0004. After user
+approval, 0005 was applied and owner-scoped issue-list reads passed for all four
+existing projects. Unexpected server errors now retain CORS/no-store headers and a generic
+JSON error, rather than appearing as a browser network failure. Server exceptions
+still propagate for logging. Chrome extension frames in a fetch stack alone do
+not establish that the extension caused the failure.
+
+Follow-up error-path verification: 150 backend tests passed (18 existing warnings,
+33.18 seconds) against isolated devpilot_test, including three new server-error
+regressions. The 14 simulated useApi/welcome checks also passed with zero unhandled
+rejections. No connected browser was available; Chrome remains a manual check.
+
+Review [0005_create_issues.py](backend/alembic/versions/0005_create_issues.py).
+Upgrade creates only the `issues` table and project/creation-date/ID index. Columns
+are id, project_id, title, description, type, status, priority, created_at, updated_at.
+It adds a project foreign key, title/description limits, enum checks, and defaults.
+It preserves every existing project, ownership value, archive timestamp, account,
+and session. All earlier migrations remain unchanged. No data is backfilled.
+
+Downgrade to 0004 drops the issue table/index and **deletes all issues**, while
+preserving project/account/session data. No development downgrade is planned.
+Only the isolated test database has been downgraded for verification.
+**Local devpilot was upgraded to 0005 after explicit approval; no development downgrade was run.**
+
+### Commands for the existing Windows workspace
+
+**PowerShell — starting directory:**
+`C:\Users\yohan_0namuao\Downloads\DevPilot-starter\backend`.
+Read-only current revision check (expected 0005):
+
+```powershell
+& ..\.venv\Scripts\python.exe -m alembic current
+```
+
+**PowerShell — starting directory:** same `backend` directory.
+**Already completed on this machine after explicit approval.** These commands
+record the upgrade and verification; no repeat upgrade is needed:
+
+```powershell
+& ..\.venv\Scripts\python.exe -m alembic upgrade 0005_create_issues
+& ..\.venv\Scripts\python.exe -m alembic current
+& ..\.venv\Scripts\python.exe -m alembic check
+```
+
+Verified after application: `0005_create_issues (head)` and no new upgrade
+operations. Keep the existing private backend/.env; do not print or overwrite it.
+
+**PowerShell, backend terminal — starting directory:**
+`C:\Users\yohan_0namuao\Downloads\DevPilot-starter\backend`.
+After migration application:
+
+```powershell
+& ..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
+```
+
+**PowerShell, separate frontend terminal — starting directory:**
+`C:\Users\yohan_0namuao\Downloads\DevPilot-starter\frontend`.
+
+```powershell
+npm.cmd run dev
+```
+
+Use http://localhost:3000 consistently. The API is http://localhost:8000.
+
+**PowerShell, frontend verification terminal — starting directory:** same
+`frontend` directory. Stop its dev server before building to avoid sharing .next:
+
+```powershell
+npm.cmd run build
+```
+
+**PowerShell, isolated-test terminal — starting directory:**
+`C:\Users\yohan_0namuao\Downloads\DevPilot-starter`.
+The existing disposable test cluster below is separate from devpilot, listens
+only on loopback port 55432, and has its own non-production test role. It has
+been stopped after verification. Never substitute the development URL:
+
+```powershell
+& 'C:\Program Files\PostgreSQL\18\bin\pg_ctl.exe' start -D "$PWD\.local-checks\management-postgres" -l "$PWD\.local-checks\management-postgres.log" -o '-h 127.0.0.1 -p 55432' -w
+$env:TEST_DATABASE_URL = 'postgresql+psycopg://devpilot_test_admin@127.0.0.1:55432/devpilot_test'
+Set-Location .\backend
+& ..\.venv\Scripts\python.exe -m pytest tests -q
+Remove-Item Env:TEST_DATABASE_URL
+Set-Location ..
+& 'C:\Program Files\PostgreSQL\18\bin\pg_ctl.exe' stop -D "$PWD\.local-checks\management-postgres" -m fast -w
+```
+
+**PowerShell, simulated frontend checks — starting directory:**
+`C:\Users\yohan_0namuao\Downloads\DevPilot-starter`.
+These local diagnostic harnesses use installed temporary tooling in ignored
+`.local-checks/auth-checks`; they are not real browser tests or app dependencies:
+
+```powershell
+node .local-checks/issues-check.cjs
+node .local-checks/use-api-check.cjs
+node .local-checks/auth-session-check.cjs
+```
+
+### Actual verification
+
+- Full backend suite: **150 passed, 18 warnings in 33.18s**, isolated PostgreSQL
+  devpilot_test on port 55432. Existing warnings: Starlette TestClient and Alembic
+  configuration deprecations. Migration, constraint, ownership, archived-state,
+  update, pagination, session, CSRF and persistence tests are included.
+- Frontend production build passed with TypeScript checks, nine static pages,
+  and the dynamic issue detail route.
+- Simulated frontend: **19 issue + 14 useApi/welcome + 24 auth = 57 passed**,
+  zero unhandled rejections. Form errors, saved status, clearing descriptions,
+  duplicate submissions, stale responses, safe login returns, archived details,
+  pagination, and the Chrome cleanup regression are covered.
+- No browser was connected. These API and simulated results do not verify Chrome,
+  Edge, responsive rendering, or real browser refresh/sign-in behavior.
+- No automated tests used devpilot or changed existing projects. No commit/push.
+
+### Precise manual browser checks after approval/application
+
+1. In Chrome, sign in and use a disposable project in your own account; leave
+   other existing projects unchanged. Create an issue with just a title. Confirm
+   Task/Todo/Medium and the saved detail URL. Return to the project and open it again.
+2. Edit title/description/type/priority; change status to In Progress, then Done.
+   Save and refresh. Clear the description and confirm it stays cleared. Sign
+   out, reopen the issue URL, sign in, and confirm return to that exact issue.
+3. Try blank/oversized input. Disconnect the API temporarily, attempt a save,
+   verify the draft remains, restore connectivity, and retry. Confirm pending
+   controls prevent duplicate submissions and success displays saved values.
+4. Archive the disposable project. Open its issue by URL: details/list remain
+   readable and Create/Edit actions are absent. A stale editor from another tab
+   must receive the archived-project message and retain its input. Restore the
+   project, refresh the issue, and confirm edits work again.
+5. Sign in with a second account and try the first account's project/issue URL;
+   it must be unavailable. Return to the original account afterwards.
+6. Check an empty list and pagination with more than 20 disposable issues. Verify
+   Previous/Next, stable creation order and no issues leaking between projects.
+7. Repeat the create/edit/refresh/re-login path in Edge. In both browsers check
+   narrow mobile and desktop widths, long text, Tab/Shift+Tab, Enter/Space,
+   native select keyboard control, visible focus, focused errors/success, and
+   absence of the cleanup AbortError overlay. Status must be readable without color.
+
+### Issue milestone changed-file inventory
+
+| Files | Responsibility |
+| --- | --- |
+| backend/alembic/versions/0005_create_issues.py | New issues table, FK/checks/defaults/index; isolated rollback |
+| backend/app/models.py | Issue ORM persistence |
+| backend/app/schemas/issues.py | Strict create/partial-update and public contracts |
+| backend/app/services/issues.py | Parent ownership, archive locking, list/read/write queries |
+| backend/app/routes/issues.py, backend/app/main.py | Nested endpoints, registration, issue 404 envelope |
+| backend/tests/test_issues.py, backend/tests/conftest.py | Isolated coverage and issue-aware test cleanup |
+| frontend/lib/issues.ts, frontend/lib/navigation.ts | Typed API/helpers/enums and safe nested return URLs |
+| frontend/components/IssueForm.tsx | Shared validated create/edit/status form and failure retention |
+| frontend/components/ProjectIssues.tsx | Paged issue cards, creation and archived/empty/error states |
+| frontend/components/IssueDetail.tsx | Saved detail, project state, edit flow, feedback |
+| frontend/components/Issues.module.css | Responsive issue styling with existing tokens |
+| frontend/components/ProjectDetail.tsx | Issue-section integration |
+| frontend/app/projects/[id]/issues/[issueId]/page.tsx | Thin issue-page composition |
+| README.md, docs/api.md, database.md, architecture.md, prd.md, wireframes.md, roadmap.md | Contract, status corrections, effects, inventory, commands and checks |
+
+No application dependency, board, labels, comments, assignment, issue archival,
+deletion, GitHub or AI feature was added.
 
 ## First signed-in project workspace
 
@@ -338,7 +520,7 @@ sessions nor modifies the old migrations. No startup command applies migrations.
 Migration 0003 has been applied to local devpilot. The previous save failure was
 caused by its missing projects table and was resolved when 0003 was applied.
 
-### Review migration 0004 before applying locally
+### Applied migration 0004
 
 Read [0004_project_archival.py](backend/alembic/versions/0004_project_archival.py).
 Upgrade adds only nullable `projects.archived_at` (`timestamp with time zone`),
@@ -350,10 +532,9 @@ Downgrade to 0003 drops only this column: project rows remain, but archive
 timestamps are lost and all projects become active if upgraded again. Downgrading
 further to 0002 deletes all projects. No development downgrade is planned.
 
-**0004 is pending explicit user approval for local devpilot.** It has only been
-applied and reversed in a disposable test database. The new API requires the
-column; do not run the new code against the old schema. Only after approval,
-stop the API, activate the existing virtual environment, and run from backend:
+**0004 was approved and applied to local devpilot.** Its archive column and
+revision were verified. The following earlier upgrade command is historical;
+use the current issues commands above for the applied 0005 migration:
 
 ```bash
 python -m alembic upgrade 0004_project_archival
@@ -362,9 +543,8 @@ python -m alembic check
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
-Expected revision after approval/application: 0004_project_archival (head).
-Before that, the current local revision remains 0003 and `alembic check` will
-report an outstanding upgrade; this is expected.
+Current local revision is 0005_create_issues. `alembic check` will report
+schema drift if any model changes lack a migration. With 0005 applied, no new upgrade operations were detected.
 Use localhost for both browser/frontend and API URLs; keep credentials include,
 HttpOnly, SameSite=Lax and production Secure settings intact.
 
@@ -397,8 +577,9 @@ to check that its list is empty and the first account's project URL is inaccessi
 Check keyboard focus, field errors, retry states, long names/descriptions, paging,
 and desktop/mobile layouts. Browser checks are separate from API and build tests.
 
-Issues, boards, labels, comments, issue statistics, and unrelated hydration-warning
-work are excluded from this milestone.
+The earlier project-management milestone excluded issues. Core issues are now
+implemented as described below; board, labels, comments, assignment, deletion,
+issue statistics and unrelated hydration-warning work remain excluded.
 
 Historical validation for the first project workspace: the backend suite passed (76 tests) on
 a separate temporary PostgreSQL 18 cluster at loopback port 55432, database
@@ -408,7 +589,7 @@ TestClient and Alembic configuration deprecation warnings. No real-browser
 acceptance or visual checks were possible because no browser was connected.
 Those tests did not use devpilot. Its 0003 migration was applied separately later.
 
-Current project-management validation: `python -m pytest tests -q` passed with
+Historical project-management validation: `python -m pytest tests -q` passed with
 **101 passed, 14 warnings in 25.55s**, using a fresh PostgreSQL 18 test cluster on
 loopback port 55432 and database `devpilot_test`. Warnings are existing Starlette
 TestClient and Alembic configuration deprecations. `npm run build` passed, including

@@ -58,7 +58,8 @@ Current-user lookup resolves only the authenticated user's public fields.
 Project routes reuse this session dependency; services/projects.py filters every
 read by the session's user_id and assigns that owner when creating. Caller-supplied
 owner IDs are never used. Missing and foreign-owned projects both return 404.
-Future issue endpoints must also verify parent ownership.
+Issue endpoints verify parent ownership before list/read/write operations and
+scope direct issue IDs to that same project.
 
 Example: moving an issue sends `PATCH /api/projects/{project_id}/issues/{issue_id}` with a new status. FastAPI authenticates the user, checks project ownership and issue membership, validates the status, commits the change, and returns the updated issue. A page refresh fetches the stored value.
 
@@ -84,9 +85,14 @@ the owner-scoped row, serializing edits and archive transitions. The service
 rejects edits while archived and makes repeated transitions no-ops. Partial edits
 use only explicitly provided fields; public schemas never expose ownership.
 PATCH is allowed by CORS while retaining the exact-Origin checks on every write.
+Unexpected route failures are rendered by a ServerErrorMiddleware boundary inside
+SecurityMiddleware's CORS/no-store handling. They return a generic 500
+`internal_error` envelope without diagnostic details, then re-raise for server
+logging. This prevents a server error from becoming an unreadable CORS failure.
 
 The frontend Workspace component verifies /api/users/me before mounting private
-page content. The useApi hook handles aborts, loading, retries and 401 redirects.
+page content. The useApi hook handles loading, retries and 401 redirects. Cleanup
+ignores stale results rather than aborting requests, preserving the Chrome fix.
 Direct private URLs are restored after login using an allowlisted internal next
 path. The server remains the authorization boundary. No identity or project data
 is stored in localStorage. ProjectList and ProjectForm share the API client,
@@ -100,7 +106,30 @@ submission, and returns focus on close. The Archived view is URL-addressable and
 resets pagination when switching views. No drafts or private project data are
 stored in browser storage.
 
-Local 0003 is applied; 0004 is tested only in isolation and awaits explicit user
-approval for devpilot. New project code requires the new column. No browser was
+Local migrations through 0005 are approved and applied. Alembic reports
+0005_create_issues (head) and no new upgrade operations. No browser was
 connected for interaction, accessibility, or visual acceptance; those checks are
 still pending even though backend tests and the production build passed.
+
+## Issues implementation
+
+`routes/issues.py` handles the nested HTTP endpoints; `schemas/issues.py` defines
+strict allowed inputs/public responses; `services/issues.py` owns authorization,
+queries and commits; `models.py` and migration 0005 own persistence. Issue writes
+first lock the owner-scoped project row, then reject archived parents and validate
+issue membership before mutation. This serializes creation/edit/status updates
+with archive/restore. Parent ownership is never accepted from request JSON.
+List/detail remain readable while archived; mismatched IDs return 404.
+
+The detail page composes Workspace and IssueDetail. ProjectIssues integrates
+paginated real issue data and creation into ProjectDetail. IssueForm reuses shared
+fields/buttons, validates the documented enums, retains input on recoverable
+failure, guards duplicate submission, and ignores completion after unmount.
+IssueDetail shows saved data and edits/status changes through the same form.
+No mutation is optimistic: success uses the API's returned record. Plain-text
+descriptions are rendered as React text. No new runtime dependencies are added.
+
+`lib/issues.ts` owns the typed frontend contract and request helpers. Safe login
+return URLs now include nested issue details. Existing useApi/AuthForm/welcome
+stale-result protection is unchanged; effect cleanup never reintroduces abort().
+Local tests with simulated DOM/fetch/router are not real browser verification.

@@ -14,13 +14,15 @@ All routes use `/api`. Request and response bodies are JSON. IDs are UUIDs. Prot
 | PATCH | `/api/projects/{project_id}` | Partially edit name/description; implemented |
 | POST | `/api/projects/{project_id}/archive` | Archive own project; implemented |
 | POST | `/api/projects/{project_id}/restore` | Restore own project; implemented |
-| GET, POST | `/api/projects/{project_id}/issues` | List or create issues |
-| GET, PATCH | `/api/projects/{project_id}/issues/{issue_id}` | Read or edit an issue; PATCH can archive |
-| GET, POST | `/api/projects/{project_id}/labels` | List or create project labels |
-| GET, POST | `/api/projects/{project_id}/issues/{issue_id}/comments` | List or create comments |
-| GET | `/api/projects/{project_id}/summary` | Dashboard status counts |
+| GET, POST | `/api/projects/{project_id}/issues` | List or create issues; implemented |
+| GET, PATCH | `/api/projects/{project_id}/issues/{issue_id}` | Read/edit issue fields or status; implemented; no archive/delete |
+| GET, POST | `/api/projects/{project_id}/labels` | Future: list or create project labels |
+| GET, POST | `/api/projects/{project_id}/issues/{issue_id}/comments` | Future: list or create comments |
+| GET | `/api/projects/{project_id}/summary` | Future: dashboard status counts |
 
-Issue PATCH accepts fields such as `status`, `priority`, and `assignee_id`. Board drag and drop uses the same PATCH operation as a status dropdown. List endpoints will take bounded pagination and optional status/type filters. Exact payload examples and OpenAPI schemas are added alongside each implemented feature, so the document stays consistent with working behavior.
+Issue PATCH accepts only `title`, `description`, `type`, `status`, and `priority`.
+Assignment, issue archival/deletion, labels, comments, board, and list filters are
+deferred. Lists currently support bounded pagination. The exact issue contract is below.
 
 ## Registration (implemented)
 
@@ -217,6 +219,77 @@ foreign-owned targets return the same 404, including archive/restore.
 Login opens /dashboard or restores an allowlisted private next URL. Projects are
 available at /projects and /projects/[id]; the Archived view is
 /projects?status=archived. Dashboard/default list request active projects.
-Issue endpoints and summary statistics in the V1 sketch remain unimplemented.
-These project management endpoints require migration 0004, which is tested in
-isolation but pending explicit approval for the local devpilot database.
+Project management uses migration 0004, already applied to local devpilot.
+Summary statistics remain unimplemented. Issues require migration 0005,
+which is approved, applied, and verified on local devpilot.
+
+## Issues (implemented; local migration 0005 applied)
+
+Every endpoint uses the existing session and verifies ownership of the project in
+the URL. No owner or project identifier is accepted in the JSON body. Looking up
+an issue requires both its ID and membership in the authorized project; there is
+no unscoped `/api/issues/{id}` endpoint. POST and PATCH reuse the trusted-Origin
+check and credentialed CORS. Responses, including errors, use no-store.
+
+### Create
+
+`POST /api/projects/{project_id}/issues` returns **201** with the saved issue.
+
+| Field | Rules / default |
+| --- | --- |
+| title | Required strict string, trimmed, 1–200 Unicode characters |
+| description | Optional strict string or null, trimmed, max 10,000 characters; omitted/blank becomes null; plain text |
+| type | task (default), bug, feature |
+| status | backlog, todo (default), in_progress, review, done |
+| priority | low, medium (default), high, urgent |
+
+The five statuses and four priorities preserve the pre-existing PRD/database
+contract. Title/description limits and defaults fill previously undefined details.
+Duplicate titles are permitted. Unsupported fields (including owner_id,
+project_id, id, timestamps, assignee_id, labels, archived_at) are rejected with 422.
+
+```json
+{"title":"Fix mobile navigation","description":"Keep the menu usable on small screens.","type":"bug","status":"todo","priority":"high"}
+```
+
+Public responses contain exactly `id`, `project_id`, `title`, `description`,
+`type`, `status`, `priority`, `created_at`, `updated_at`. IDs are UUIDs; timestamps
+are UTC. Description is nullable. Ownership is inherited from the project and is
+not returned as a separate owner field.
+
+### List and retrieve
+
+`GET /api/projects/{project_id}/issues?limit=20&offset=0` returns **200**:
+`{"items":[/* public issues */],"has_more":false}`. Limit is 1–100, default 20;
+offset is nonnegative, default 0. Ordering is `created_at DESC, id DESC`, including
+ties. Updates do not change creation order. Offset pagination is not a snapshot;
+concurrent creation can move page boundaries. Empty collections have `items: []`.
+
+`GET /api/projects/{project_id}/issues/{issue_id}` returns **200** with one issue.
+Archived projects and their issues remain readable by their owner.
+
+### Partial updates and status changes
+
+`PATCH /api/projects/{project_id}/issues/{issue_id}` returns **200** with the saved
+issue. At least one allowed field is required. Omitted fields stay unchanged;
+explicit null is accepted only for description, where it clears the value. Blank
+description also clears it. Empty patches, null title/type/status/priority, invalid
+enums, and unsupported fields are rejected atomically with 422. Status is changed
+with the same PATCH, e.g. `{"status":"done"}`. A no-op patch preserves updated_at.
+
+An archived parent blocks POST and PATCH with **409 project_archived** using the
+existing project error envelope. Restore the project before retrying. Each write
+locks and checks the owner-scoped parent row, serializing it with project archival.
+An issue is never moved to another project through PATCH.
+
+### Errors
+
+- **401 authentication_required**: missing/expired/revoked session.
+- **403 csrf_failed**: untrusted/missing Origin on a write.
+- **404 project_not_found**: missing or foreign project, using identical responses.
+- **404 issue_not_found**: absent issue or ID not belonging to the authorized project.
+- **409 project_archived**: parent is archived; creation/edit/status writes blocked.
+- **422 validation_error**: invalid body, UUID, or pagination.
+
+Example issue error: `{"error":{"code":"issue_not_found","message":"Issue not found."}}`.
+Validation responses retain the existing sanitized envelope and do not echo input.

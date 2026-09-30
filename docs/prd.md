@@ -49,8 +49,28 @@ to active lists. Archive confirmation explains that data is preserved. Repeated
 archive/restore requests are safe no-ops. Partial edits preserve omitted fields;
 an explicit null description clears it. Forms retain edits after recoverable errors.
 
-This code requires new migration 0004, pending explicit approval for local devpilot;
-0003 is already applied. Isolated backend tests and production build passed;
+Project migrations through 0004 are already applied to local devpilot.
+Isolated backend tests and production build passed;
 browser acceptance remains unverified because no browser was connected.
-Issues, boards, labels, comments, and issue counts remain future V1 work. This
-milestone deliberately shows no placeholder activity or statistics.
+Boards, labels, comments, assignment, issue archival/deletion, and issue counts
+remain future V1 work. No placeholder activity or statistics are shown.
+
+## Implemented core issues milestone
+
+Owners can create, list, open, edit, and change status on issues in their active
+projects. Title is trimmed and required (1–200 characters); description is optional
+plain text up to 10,000 characters. Types: Task, Bug, Feature. The existing V1
+statuses and priorities above are preserved, including Backlog, Review, and Urgent.
+Defaults are Task, Todo, Medium. Issues have UUIDs, project relationships, and
+creation/update timestamps; lists use bounded newest-first pagination.
+
+Project archival preserves issue data. Owners can still read archived projects'
+issues, but must restore the project before creating/editing/changing status.
+Other accounts cannot access issues, even by direct ID or a mismatched project URL.
+Changes persist across new requests and sign-out/sign-in. Forms preserve drafts
+after recoverable failures; no draft is stored in browser storage.
+
+Migration 0005 is tested in isolation and approved/applied to local
+devpilot. Browser acceptance remains pending; tests with HTTP clients or a
+simulated DOM do not establish browser behavior. The board, comments, labels,
+assignment, deletion, GitHub and AI are explicitly outside this milestone.

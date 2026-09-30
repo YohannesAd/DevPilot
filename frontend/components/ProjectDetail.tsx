@@ -9,6 +9,7 @@ import { projectDate, setProjectArchived, type Project } from "@/lib/projects";
 import { Button, ButtonLink } from "./Button";
 import ProjectForm from "./ProjectForm";
 import ConfirmDialog from "./ConfirmDialog";
+import ProjectIssues from "./ProjectIssues";
 import styles from "./Workspace.module.css";
 
 export default function ProjectDetail({ initialProject }: { initialProject: Project }) {
@@ -76,6 +77,7 @@ export default function ProjectDetail({ initialProject }: { initialProject: Proj
         <div><dt>Last updated</dt><dd><time dateTime={project.updated_at}>{projectDate(project.updated_at)}</time></dd></div>
         <div><dt>Visibility</dt><dd>Only you</dd></div></dl>
     </section>
+    <ProjectIssues key={project.id} projectId={project.id} archived={!!project.archived_at} />
     {project.archived_at && <div className={styles.listFooter}><ButtonLink href="/projects?status=archived" variant="secondary">View archived projects</ButtonLink></div>}
     {confirming && <ConfirmDialog title="Archive this project?" pending={pending} error={error}
       onCancel={() => { setConfirming(false); setError(""); }} onConfirm={() => changeArchive(true)}>

@@ -4,6 +4,7 @@ from datetime import datetime
 
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.errors import ServerErrorMiddleware
 from starlette.responses import JSONResponse, Response
 
 from app.config import get_auth_settings
@@ -12,11 +13,19 @@ from app.services.auth import SESSION_TTL_SECONDS
 SESSION_COOKIE = "devpilot_session"
 
 
+async def server_error(_request, _exc):
+    return JSONResponse(status_code=500, content={"error": {
+        "code": "internal_error", "message": "Something went wrong. Please try again.",
+    }})
+
+
 class SecurityMiddleware:
     def __init__(self, app):
         # Starlette initializes middleware on first use, not at module import.
         self.settings = get_auth_settings()
-        self.downstream = app
+        # Render failures inside CORS/no-store so the frontend can read the 500.
+        # ServerErrorMiddleware re-raises afterwards, preserving server logging.
+        self.downstream = ServerErrorMiddleware(app, handler=server_error)
         self.app = CORSMiddleware(
             self.check_origin, allow_origins=[self.settings.frontend_origin],
             allow_credentials=True, allow_methods=["GET", "POST", "PATCH"],

@@ -21,8 +21,9 @@ The screen plan above describes eventual V1. The current milestone includes:
 | /dashboard | Personal greeting, up to four newest active projects, Create project, View all projects |
 | /projects | Active/Archived view links, paginated active cards, inline create form |
 | /projects?status=archived | Paginated archived cards, archive dates, useful empty state |
-| /projects/[id] active | Saved details and dates, Edit project, Archive project, All projects link |
-| /projects/[id] archived | Prominent archived state/date, preserved details, Restore, Archived projects link |
+| /projects/[id] active | Saved project details, edit/archive, paginated issue list, Create issue form |
+| /projects/[id] archived | Prominent archived state/date, preserved project and issue details, Restore; no issue creation |
+| /projects/[id]/issues/[issueId] | Saved issue title/description, text type/status/priority, dates, Back to project, Edit issue for active projects |
 | /account | Profile and working logout; workspace navigation |
 
 Signed-in Home and the logo lead to /dashboard. Projects leads to /projects;
@@ -51,4 +52,34 @@ archived state and displays progress, failure, and saved-state success feedback.
 Layouts use the existing tokens/CSS Modules, wrap actions, and constrain modal
 width/height for small screens. These are implemented behaviors, not verified
 browser results: no browser was connected for desktop/mobile, keyboard, or visual
-checks. See README for the remaining acceptance checklist after 0004 approval.
+checks. Migration 0004 is now applied; see README for the issue acceptance
+checklist; 0005 is now approved and applied.
+
+## Core issue flow
+
+The issue list sits beneath saved project details. Cards show the real title,
+Type, Status, Priority, and creation date. Newest issues appear first; Previous
+and Next page through twenty at a time. An empty active project offers Create
+issue; an archived empty project explains that restoration is required. Archived
+issues remain linked/readable. Loading and retryable errors are explicit.
+
+Create issue opens an inline form with a required title, optional plain-text
+description, and labeled native Type/Status/Priority selects. Defaults are Task,
+Todo, Medium; options include all five documented statuses and four priorities.
+The first field receives focus. The create action stays disabled while saving
+and navigating to the saved issue to prevent duplicate submission. An uncertain
+create failure explains that the user should check the list before retrying.
+
+Issue detail has an Edit issue action for active projects. Editing starts with
+saved values; status changes use the same form and Save changes button. Recoverable
+errors preserve all form values and focus a visible alert. Success renders the
+returned record with a focused status message. Cancel returns focus to the issue
+heading. Archived issue details show a read-only notice and link to the project's
+Restore action. A stale editor receiving 409 preserves its input and explains
+that restoration is required.
+
+Controls wrap/stack at the existing mobile breakpoint; long titles/descriptions
+wrap and descriptions preserve line breaks without interpreting markup. Status
+is always text, not color alone. Existing focus outlines and native keyboard
+controls are retained. No board, labels, comments, assignment or deletion actions
+are displayed. Search/filter controls and dashboard issue counts remain future.
