@@ -185,3 +185,17 @@ the added issues constraint, **permanently losing all comments, labels and label
 assignments**, while retaining previous issue/project/account data. No development
 downgrade is authorized or planned. Label deletion preserves issue timestamps;
 comment edits update only that comment's updated_at. Same-body edits are no-ops.
+
+## Filtering/dashboard storage impact
+
+No migration, new table, column, or ordering field is needed. A read-only check
+for this milestone confirmed database devpilot at 0006_comments_labels. No local
+upgrade or downgrade was run and automated tests used only isolated devpilot_test.
+Existing project ownership/archive predicates, issue project relationship and
+label assignment constraints remain the data boundary. Filters use parameterized
+SQL, an EXISTS label-membership condition and the existing creation/UUID ordering.
+Dashboard groups counts in PostgreSQL and bounds recent result sets to 4/6.
+Literal substring search can scan issues within a project; no speculative search
+index or historical analytics schema was added. Tune indexes only after measuring
+real workloads. Existing timestamps retain their meaning: issue edits/status
+change issue.updated_at; comments/labels are not activity timestamps for an issue.

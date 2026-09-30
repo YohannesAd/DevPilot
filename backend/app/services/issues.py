@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Issue
+from app.models import Issue, Label
 from app.schemas.issues import CreateIssue, UpdateIssue
 from app.services.projects import ProjectArchived, get_project
 
@@ -25,9 +25,21 @@ def create_issue(db: Session, owner_id: UUID, project_id: UUID, data: CreateIssu
     return issue
 
 
-def list_issues(db: Session, owner_id: UUID, project_id: UUID, limit: int, offset: int) -> tuple[list[Issue], bool]:
+def list_issues(db: Session, owner_id: UUID, project_id: UUID, limit: int, offset: int,
+                *, status: str | None = None, priority: str | None = None,
+                type: str | None = None, label_id: UUID | None = None,
+                q: str | None = None) -> tuple[list[Issue], bool]:
     get_project(db, owner_id, project_id)
-    rows = list(db.scalars(select(Issue).where(Issue.project_id == project_id)
+    query = select(Issue).where(Issue.project_id == project_id)
+    for column, value in [(Issue.status, status), (Issue.priority, priority), (Issue.type, type)]:
+        if value is not None:
+            query = query.where(column == value)
+    if label_id is not None:
+        query = query.where(Issue.labels.any(Label.id == label_id))
+    if q and q.strip():
+        # Literal substring, with bound parameters and escaped LIKE metacharacters.
+        query = query.where(Issue.title.icontains(q.strip(), autoescape=True))
+    rows = list(db.scalars(query
                           .order_by(Issue.created_at.desc(), Issue.id.desc())
                           .offset(offset).limit(limit + 1)))
     return rows[:limit], len(rows) > limit

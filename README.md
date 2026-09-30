@@ -2,9 +2,9 @@
 
 DevPilot is a workspace for individual developers to organize projects and track bugs, features, and tasks. V1 covers accounts, projects, issues, labels, comments, a Kanban board, and a basic dashboard. GitHub integration and AI are later phases.
 
-## First coding milestone
+## Current implementation
 
-This repository began with a small vertical slice: a FastAPI health endpoint and a Next.js page that fetches it. Accounts, persistent sessions, private project management and core issues are implemented. Owners can create, list, view, edit and change issue status inside projects. Local migration `0004_project_archival` is applied. `0005_create_issues` is also approved, applied, and verified on local `devpilot`. The project Kanban board is implemented. Comments and project labels are now implemented in code. Migration `0006_comments_labels` is approved, applied, and verified on local devpilot. Assignment, issue archival/deletion, GitHub and AI remain deferred.
+This repository began with a small vertical slice: a FastAPI health endpoint and a Next.js page that fetches it. Accounts, persistent sessions, private project management and core issues are implemented. Owners can create, list, view, edit and change issue status inside projects. Local migration `0004_project_archival` is applied. `0005_create_issues` is also approved, applied, and verified on local `devpilot`. The project Kanban board is implemented. Comments and project labels are now implemented in code. Migration `0006_comments_labels` is approved, applied, and verified on local devpilot. Project issue filtering and a real-data dashboard are also implemented; see the latest handoff at the end of this README. Assignment, issue archival/deletion, GitHub and AI remain deferred.
 
 For the existing Windows setup, use the terminal/directory-labeled commands in
 **Comments and labels: migration review and handoff** below. Migration 0006 has already been approved and applied locally. Migration 0005 is already
@@ -981,3 +981,151 @@ Set-Location ..
 6. At desktop and narrow mobile widths, verify wrapping, native selects, visible
    focus, readable badge names, keyboard controls and announcements. Check Chrome
    for absence of cleanup AbortError/unhandled fetch overlays.
+
+## Issue filtering and real-data dashboard: latest handoff
+
+Implemented project-scoped status, priority, type, label and title filters shared
+by List and Board. Apply writes URL parameters; Clear restores the full list.
+The backend combines selected filters with AND before bounded pagination. Label
+filtering selects one exact project label; title search is a trimmed,
+case-insensitive literal substring of at most 200 characters. All matching issues
+are reachable: List pages by 20 and Board loads 100 per explicit request.
+A confirmed move outside a status filter removes its card and corrects the next
+offset. No optimistic changes or manual ordering were added.
+
+The dashboard now calls GET /api/dashboard for real counts and recent work:
+active projects, all their issues including Done, all five status counts, up to
+six recently updated issues and four recently updated projects. Archived projects
+and their issues are excluded. Links open saved details. Timestamp scope is
+explained onscreen; comments/label changes do not update the issue timestamp and
+issue activity does not update its project timestamp. Refresh obtains current
+data. Historical trends/activity analytics and global search remain deferred.
+
+Documentation conflicts resolved: old deferred-filter/count statements are
+superseded, newest-created dashboard projects are now ordered by project update
+time, and the sketched per-project summary is replaced by the implemented account
+summary. Enum values, response envelopes, ownership and mutation contracts remain
+unchanged. No new dependencies or database migration are necessary.
+
+### Changed files and responsibilities
+
+| Files | Responsibility |
+| --- | --- |
+| backend/app/routes/issues.py; services/issues.py | Validate issue query parameters and apply owner-scoped SQL filtering before pagination |
+| backend/app/routes/dashboard.py; schemas/dashboard.py; services/dashboard.py | Authenticated typed dashboard contract, SQL counts and bounded recent selections |
+| backend/app/main.py; security.py | Register dashboard route and preserve no-store on private responses |
+| backend/tests/test_filter_dashboard.py | PostgreSQL filter/search/validation/pagination/ownership/archive/count/query-bound coverage |
+| frontend/lib/issueFilters.ts | Shared query parsing, encoding and project-view links |
+| frontend/components/IssueFilters.tsx; IssueFilters.module.css | Accessible URL filter form and bounded label choices |
+| frontend/components/ProjectIssueViews.tsx; ProjectIssues.tsx | Shared filters, URL navigation, keyed paging reset, list error and empty states |
+| frontend/lib/useIssueBoard.ts; components/IssueBoard.tsx | Filtered board loading, confirmed move-out offset correction, announcements and focus |
+| frontend/lib/dashboard.ts; components/Dashboard.tsx; Dashboard.module.css | Typed real-data dashboard and responsive summary/recent-work UI |
+| frontend/app/dashboard/page.tsx | Workspace/dashboard composition |
+| frontend/tests/filter-dashboard-check.cjs; board-check.cjs | New filtering/dashboard simulations and existing board harness integration |
+| README.md and all six docs/*.md | Implemented contracts, scope, query behavior, migration status and verification handoff |
+
+### Actual verification and migration status
+
+- Full backend suite: **197 passed, 22 warnings in 66.37s**, isolated PostgreSQL
+  devpilot_test on loopback port 55432. Warnings are existing Starlette TestClient
+  and Alembic configuration deprecations. Tests cover filter combinations/literal
+  search, invalid parameters, matching pages beyond 100, List/Board query agreement,
+  ownership, archived reads/exclusion/restoration, empty/expired accounts, totals,
+  deterministic ties, recent caps and bounded SQL query count, plus all regressions.
+- **104 frontend simulations passed**, zero unhandled rejections: 14 new
+  filtering/dashboard + 15 organization + 18 board + 19 issue + 14 cleanup + 24
+  authentication checks. Real React DOM/jsdom with mocked fetch/router; URL/history
+  changes and drag events are simulated, not actual browser interactions.
+- **Production build passed**, including type validation and nine static pages.
+  PowerShell requires npm.cmd here; npm.ps1 is blocked by the local execution policy.
+- Read-only development check returned **database devpilot, revision
+  0006_comments_labels**. No migration created/applied, no development data changed.
+  The isolated test cluster was stopped after testing. No commit or push.
+- Browser inventory returned no available browsers. Real browser checks below
+  remain outstanding; existing user-confirmed issue functionality is unaffected.
+
+### Remaining real-browser checks
+
+Use a disposable project and account in Chrome and Edge at localhost:3000:
+
+1. Create issues spanning all five statuses, four priorities, three types and
+   multiple labels. Apply each filter and combinations, including title search
+   with mixed case, percent and underscore. Confirm only matching titles appear.
+2. Switch List/Board/Labels and back; refresh, use Back/Forward, and paste the
+   filtered URL into a new tab. Controls and matching data must agree. Clear
+   filters, test zero matches, and check a genuinely empty project separately.
+3. With more than 100 matching issues, page the List and load all Board pages.
+   Move a card out of the selected status, then load the next page: no skipped
+   row, success announcement, focus on the board heading. Test failed requests,
+   retry, and fast filter/navigation changes while old reads are still pending.
+4. Compare dashboard totals/status counts with saved active work. Archive and
+   restore a project, revisit/refresh dashboard, and verify exclusions/counts.
+   Change issue status, refresh and sign out/in. Check recent-work links and
+   ordering by the documented update timestamp, including Done.
+5. Check empty and expired accounts, a second account, offline errors and retry.
+   Test desktop and narrow mobile layouts, Tab/Enter/Space focus, labeled filters,
+   mobile column selection and keyboard movement. Confirm no Chrome cleanup or
+   unhandled request overlay. Do not use existing personal projects as test data.
+
+### Exact local commands
+
+**PowerShell - backend server; starting directory:**
+`C:\Users\yohan_0namuao\Downloads\DevPilot-starter\backend`
+
+```powershell
+& ..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
+```
+
+**PowerShell - frontend server, separate terminal; starting directory:**
+`C:\Users\yohan_0namuao\Downloads\DevPilot-starter\frontend`
+
+```powershell
+npm.cmd run dev
+```
+
+Open http://localhost:3000. Reuse running servers rather than launching duplicates.
+
+**PowerShell - production build; starting directory:** same frontend directory.
+Stop the frontend dev server first so it does not share the .next build directory.
+
+```powershell
+npm.cmd run build
+```
+
+**PowerShell - frontend simulations; starting directory:**
+`C:\Users\yohan_0namuao\Downloads\DevPilot-starter`
+
+```powershell
+node frontend/tests/filter-dashboard-check.cjs
+node frontend/tests/organization-check.cjs
+node frontend/tests/board-check.cjs
+node .local-checks/issues-check.cjs
+node .local-checks/use-api-check.cjs
+node .local-checks/auth-session-check.cjs
+```
+
+These use the existing ignored .local-checks/auth-checks/node_modules/jsdom
+installation and frontend React/TypeScript. The older three .local-checks scripts
+are local diagnostics, not tracked application dependencies.
+
+**PowerShell - full backend tests; starting directory:** same repository root.
+Use only the existing isolated test cluster/database below, never devpilot.
+
+```powershell
+& 'C:\Program Files\PostgreSQL\18\bin\pg_ctl.exe' start -D "$PWD\.local-checks\management-postgres" -l "$PWD\.local-checks\management-postgres.log" -o '-h 127.0.0.1 -p 55432' -w
+$env:TEST_DATABASE_URL = 'postgresql+psycopg://devpilot_test_admin@127.0.0.1:55432/devpilot_test'
+Set-Location .\backend
+& ..\.venv\Scripts\python.exe -m pytest tests -q
+Remove-Item Env:TEST_DATABASE_URL
+Set-Location ..
+& 'C:\Program Files\PostgreSQL\18\bin\pg_ctl.exe' stop -D "$PWD\.local-checks\management-postgres" -m fast -w
+```
+
+**PowerShell - optional read-only migration check; starting directory:**
+`C:\Users\yohan_0namuao\Downloads\DevPilot-starter\backend`
+
+```powershell
+& ..\.venv\Scripts\python.exe -m alembic current
+```
+
+Expected revision: 0006_comments_labels (head). No upgrade command is needed.

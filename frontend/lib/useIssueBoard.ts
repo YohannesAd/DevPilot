@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { api, ApiError } from "./api";
 import { issueCollectionPath, updateIssue, ISSUE_STATUSES, type Issue, type IssuePage } from "./issues";
 import { loginDestination } from "./navigation";
+import { filterQuery, type IssueFilters } from "./issueFilters";
 
 export const BOARD_PAGE_SIZE = 100;
 export type IssueStatus = Issue["status"];
 
-export function useIssueBoard(projectId: string, archived: boolean) {
+export function useIssueBoard(projectId: string, archived: boolean, filters: IssueFilters = {}) {
   const router = useRouter();
+  const query = filterQuery(filters);
   const [items, setItems] = useState<Issue[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -19,7 +21,7 @@ export function useIssueBoard(projectId: string, archived: boolean) {
   const [message, setMessage] = useState("");
   const [blocked, setBlocked] = useState(false);
   const [retryMove, setRetryMove] = useState<{ issue: Issue; status: IssueStatus } | null>(null);
-  const [moved, setMoved] = useState<{ id: string; status: IssueStatus } | null>(null);
+  const [moved, setMoved] = useState<{ id: string; status: IssueStatus; hidden?: boolean } | null>(null);
   const offset = useRef(0);
   const busy = useRef(false);
   const generation = useRef(0);
@@ -39,7 +41,7 @@ export function useIssueBoard(projectId: string, archived: boolean) {
     } else if (err instanceof ApiError && err.code === "csrf_failed") {
       setError("The request could not be verified. Refresh the project and try again.");
     } else if (err instanceof ApiError && err.status === 422) {
-      setError("That move was rejected. Refresh the board to load the saved status.");
+      setError("The request was rejected. Check or clear the filters, then refresh the board.");
     } else setError(fallback);
   }
 
@@ -50,7 +52,7 @@ export function useIssueBoard(projectId: string, archived: boolean) {
     setPending("load"); if (!blocked) setError(""); setMessage(""); setRetryMove(null);
     const start = reset ? 0 : offset.current;
     try {
-      const page = await api<IssuePage>(`${issueCollectionPath(projectId)}?limit=${BOARD_PAGE_SIZE}&offset=${start}`);
+      const page = await api<IssuePage>(`${issueCollectionPath(projectId)}?limit=${BOARD_PAGE_SIZE}&offset=${start}${query ? `&${query}` : ""}`);
       if (generation.current !== current) return;
       setItems(previous => {
         // De-duplicate shifted offset pages; keep newer confirmed versions.
@@ -79,9 +81,13 @@ export function useIssueBoard(projectId: string, archived: boolean) {
     try {
       const saved = await updateIssue(projectId, issue.id, { status });
       if (generation.current !== current) return;
-      setItems(previous => previous.map(row => row.id === saved.id ? saved : row));
-      setMessage(`${saved.title} moved to ${ISSUE_STATUSES[saved.status]}.`);
-      setMoved({ id: saved.id, status: saved.status });
+      const hidden = !!filters.status && filters.status !== saved.status;
+      setItems(previous => hidden ? previous.filter(row => row.id !== saved.id)
+        : previous.map(row => row.id === saved.id ? saved : row));
+      // Removing a row from the filtered range shifts the server's next offset.
+      if (hidden) offset.current = Math.max(0, offset.current - 1);
+      setMessage(`${saved.title} moved to ${ISSUE_STATUSES[saved.status]}.${hidden ? " It no longer matches the status filter." : ""}`);
+      setMoved({ id: saved.id, status: saved.status, hidden });
     } catch (err) {
       if (generation.current !== current) return;
       setRetryMove({ issue, status });
@@ -99,7 +105,7 @@ export function useIssueBoard(projectId: string, archived: boolean) {
     return () => { generation.current++; busy.current = false; };
     // The view is keyed by project and archived state; router changes also restart safely.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, archived, router]);
+  }, [projectId, archived, router, query]);
 
   return { items, loaded, hasMore, pending, error, message, moved,
     disabled: archived || blocked || !!pending, load, move, retryMove };

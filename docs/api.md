@@ -18,11 +18,10 @@ All routes use `/api`. Request and response bodies are JSON. IDs are UUIDs. Prot
 | GET, PATCH | `/api/projects/{project_id}/issues/{issue_id}` | Read/edit issue fields or status; implemented; no archive/delete |
 | GET, POST | `/api/projects/{project_id}/labels` | List or create project labels; implemented in 0006 |
 | GET, POST | `/api/projects/{project_id}/issues/{issue_id}/comments` | List or create comments; implemented in 0006 |
-| GET | `/api/projects/{project_id}/summary` | Future: dashboard status counts |
+| GET | `/api/dashboard` | Owner-scoped active-work counts and bounded recent work |
 
 Issue PATCH accepts only `title`, `description`, `type`, `status`, and `priority`.
-Assignment, issue archival/deletion, and list filters are
-deferred. Lists currently support bounded pagination. The exact issue contract is below.
+Assignment and issue archival/deletion remain deferred. Issue lists support server-side filtering and bounded pagination; the filtering and dashboard contracts are below. The previously sketched per-project summary endpoint is superseded by `/api/dashboard` and is not implemented.
 
 ## Registration (implemented)
 
@@ -369,3 +368,52 @@ action is a no-op with the same response. The label must still exist in the same
 project (404 otherwise); composite database foreign keys enforce this as well.
 Issue title, description, status, creation time and updated_at are not changed by
 label assignments. Comments and labels are not writable through issue PATCH.
+
+## Project issue filters and dashboard (implemented)
+
+`GET /api/projects/{project_id}/issues` accepts optional single-value parameters:
+
+| Parameter | Validation and meaning |
+| --- | --- |
+| status | backlog, todo, in_progress, review, done |
+| priority | low, medium, high, urgent |
+| type | task, bug, feature |
+| label_id | UUID; issue must have this project label |
+| q | At most 200 characters before trimming; case-insensitive literal title substring |
+| limit / offset | Existing defaults 20 / 0; limit 1-100, offset >= 0 |
+
+All selected filters combine with **AND**, before pagination. One label may be
+selected; other labels on the issue do not exclude it. Unknown or foreign label
+UUIDs return no matches and reveal no label details. Project authorization still
+runs first. Malformed UUIDs, invalid enums, oversized search and invalid page
+bounds return the established 422 validation error. Blank/whitespace-only q is
+ignored. Percent, underscore and backslash in q are literal characters, not
+wildcards; SQL uses bound parameters and escaped LIKE syntax. Descriptions and
+comments are not searched. Example:
+`/api/projects/{id}/issues?status=todo&priority=high&type=bug&label_id={uuid}&q=login&limit=20&offset=0`.
+Response remains `{items, has_more}`, ordered by created_at DESC, id DESC with
+batched labels. Archived projects remain readable; write restrictions are unchanged.
+
+`GET /api/dashboard` uses the existing authenticated session, established error
+format and `Cache-Control: no-store`. There is no owner parameter. Response:
+
+```json
+{
+  "active_projects": 0,
+  "total_issues": 0,
+  "status_counts": {"backlog": 0, "todo": 0, "in_progress": 0, "review": 0, "done": 0},
+  "recent_projects": [],
+  "recent_issues": []
+}
+```
+
+Counts cover only the caller's projects with archived_at NULL and their issues,
+including Done. All five status keys are present and sum to total_issues.
+Recent projects are at most four PublicProject records. Recent issues are at most
+six records with id, project_id, project_name, title, status, type, priority and
+updated_at. Both lists order by their own updated_at DESC, id DESC. Comments and
+label changes do not update issue.updated_at; issue activity does not update the
+parent project's timestamp. This is recent saved work, not an activity log.
+No client-side issue download is needed for totals. Refresh/re-entry reads current
+values; there is no live subscription. The planned per-project summary endpoint
+has been replaced by this account dashboard contract.

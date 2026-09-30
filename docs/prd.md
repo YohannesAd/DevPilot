@@ -24,7 +24,7 @@ The statuses are Backlog, Todo, In Progress, Review, and Done. Priorities are Lo
 4. They sign out and sign back in; the project, issues, statuses, and comments remain.
 5. A second account cannot access the first account's project or related issues, even by calling the API directly.
 
-Project archival hides it from the active list but preserves its issues and comments. Issue archival similarly preserves history. The basic dashboard shows open and completed issue counts, plus counts by status. No deadline, notification, or analytics promise is part of V1.
+Project archival hides it from the active list but preserves its issues and comments. Issue archival remains deferred. The dashboard shows active-project and total active-project issue counts, plus all five status counts (including Done). Recently updated active projects and issues link to saved details; archived work is excluded. No deadline, notification, or analytics promise is part of V1.
 
 ## Quality requirements
 
@@ -110,6 +110,23 @@ Archived projects remain readable but prohibit all comment/label writes.
 The earlier docs specified table/route names but no limits or color contract;
 the limits above resolve those gaps using this milestone's requested defaults.
 Earlier comments/labels-deferred statements refer to historical milestones.
-Assignment, issue archival/deletion, analytics, search, notifications, GitHub and
+Assignment, issue archival/deletion, historical analytics, global search, notifications, GitHub and
 AI remain deferred. Implementation is complete in code; local migration 0006
 is approved and applied, and browser acceptance is separate from simulated checks.
+
+## Shared filters and dashboard acceptance
+
+Project List and Board expose status, priority, type, one project label and title
+search. Filters combine with AND and execute on the server before pagination.
+The URL preserves selections through refresh, navigation and copied links.
+Clear filters restores the full project collection. All matching issues remain
+reachable via bounded pages; confirmed board movement can remove a card from a
+status-filtered result without skipping the next issue.
+
+The dashboard counts all active projects owned by the signed-in account and their
+issues in every status, including Done, with a five-status breakdown. It links to
+at most six recently updated issues and four recently updated active projects.
+Archived work is excluded. Empty accounts get Create project; failures offer
+retry. This supersedes earlier deferred project-search/dashboard-count notes and
+the API sketch of a per-project summary. Global search, historical trends,
+notifications, assignment, GitHub and AI remain outside this milestone.

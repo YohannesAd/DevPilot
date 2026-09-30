@@ -52,7 +52,9 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
 const response = (status, body) => ({ status, ok: status >= 200 && status < 300, json: async () => body });
 const page = (items = [issue], has_more = false) => response(200, { items, has_more });
 const saved = status => response(200, { ...issue, status, updated_at: '2026-02-01T00:00:00Z' });
-global.fetch = (url, options = {}) => new Promise((resolve, reject) => requests.push({ url, options, resolve, reject }));
+global.fetch = (url, options = {}) => /\/labels\?/.test(url)
+  ? Promise.resolve(page([])) // Filter-choice reads are covered in the filtering harness.
+  : new Promise((resolve, reject) => requests.push({ url, options, resolve, reject }));
 async function settle(fn) { await act(async () => { fn?.(); await tick(); }); }
 async function mount(Component = Board, supplied = props, strict = false) {
   requests = []; redirects = [];
@@ -72,7 +74,7 @@ const choose = async (v, target) => settle(() => {
   const select = v.container.querySelector(`#move-${issue.id}`); select.value = target;
   select.dispatchEvent(new window.Event('change', { bubbles: true }));
 });
-const submit = v => settle(() => v.container.querySelector('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })));
+const submit = v => settle(() => v.container.querySelector('select[id^=move]').closest('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })));
 let passed = 0;
 async function check(name, run) { await run(); await tick(); assert.equal(unhandled.length, 0); passed++; console.log(`PASS ${name}`); }
 (async () => {

@@ -3,17 +3,20 @@
 import { useEffect, useRef, useState } from "react";
 import { ISSUE_STATUSES } from "@/lib/issues";
 import { useIssueBoard, type IssueStatus } from "@/lib/useIssueBoard";
+import { filterQuery, type IssueFilters } from "@/lib/issueFilters";
 import BoardColumn from "./BoardColumn";
 import { Button } from "./Button";
 import styles from "./IssueBoard.module.css";
 
-export default function IssueBoard({ projectId, archived }: { projectId: string; archived: boolean }) {
-  const board = useIssueBoard(projectId, archived);
+export default function IssueBoard({ projectId, archived, filters = {} }: { projectId: string; archived: boolean; filters?: IssueFilters }) {
+  const board = useIssueBoard(projectId, archived, filters);
+  const filtered = !!filterQuery(filters);
   const [column, setColumn] = useState<IssueStatus>("todo");
   const [dragging, setDragging] = useState<string | null>(null);
   const focusMove = useRef(false);
   useEffect(() => {
-    if (board.moved) { focusMove.current = true; setColumn(board.moved.status); }
+    if (board.moved?.hidden) { document.getElementById("board-heading")?.focus(); focusMove.current = false; }
+    else if (board.moved) { focusMove.current = true; setColumn(board.moved.status); }
   }, [board.moved]);
   useEffect(() => {
     if (focusMove.current && board.moved && column === board.moved.status) {
@@ -28,7 +31,7 @@ export default function IssueBoard({ projectId, archived }: { projectId: string;
   }
 
   return <section aria-labelledby="board-heading" className={styles.board}>
-    <div className={styles.toolbar}><h2 id="board-heading">Issue board</h2>
+    <div className={styles.toolbar}><h2 id="board-heading" tabIndex={-1}>Issue board</h2>
       <Button variant="secondary" disabled={!!board.pending} onClick={() => void board.load(true)}>Refresh board</Button>
     </div>
     <p className={styles.help}>{archived ? "This project is archived. Its board is read-only. Restore the project to move issues."
@@ -40,7 +43,8 @@ export default function IssueBoard({ projectId, archived }: { projectId: string;
       }}>Retry move</Button> : <Button variant="secondary" disabled={!!board.pending} onClick={() => void board.load(!board.loaded)}>Try loading again</Button>}
     </div>}
     {board.loaded && <>
-      <p className={styles.help}>{board.items.length} issues loaded. {board.hasMore ? "More issues are available; load older issues below. Column counts cover loaded cards only." : "All issues loaded."}</p>
+      {!board.items.length && !board.hasMore && <p>{filtered ? "No matching issues. Change or clear filters to see other issues." : "No issues yet. Use List to create your first issue."}</p>}
+      <p className={styles.help}>{board.items.length} {filtered ? "matching issues" : "issues"} loaded. {board.hasMore ? "More issues are available; load older issues below. Column counts cover loaded cards only." : filtered ? "All matching issues loaded." : "All issues loaded."}</p>
       <div className={styles.mobileNav}><label htmlFor="board-column">Show column</label>
         <select id="board-column" value={column} onChange={event => setColumn(event.target.value as IssueStatus)}>
           {Object.entries(ISSUE_STATUSES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}

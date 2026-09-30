@@ -10,7 +10,7 @@ from app.database import get_db
 from app.dependencies import require_session
 from app.models import UserSession
 from app.schemas.auth import ErrorResponse
-from app.schemas.issues import CreateIssue, IssuePage, PublicIssue, UpdateIssue
+from app.schemas.issues import CreateIssue, IssuePage, PublicIssue, UpdateIssue, IssueStatus, IssuePriority, IssueType
 from app.services import issues
 
 router = APIRouter(prefix="/api/projects/{project_id}/issues", tags=["issues"], responses={
@@ -29,8 +29,12 @@ def create(project_id: UUID, data: CreateIssue, session: Authenticated, db: Data
 @router.get("", response_model=IssuePage)
 def listing(project_id: UUID, session: Authenticated, db: Database,
             limit: Annotated[int, Query(ge=1, le=100)] = 20,
-            offset: Annotated[int, Query(ge=0)] = 0) -> IssuePage:
-    rows, has_more = issues.list_issues(db, session.user_id, project_id, limit, offset)
+            offset: Annotated[int, Query(ge=0)] = 0,
+            status: IssueStatus | None = None, priority: IssuePriority | None = None,
+            type: IssueType | None = None, label_id: UUID | None = None,
+            q: Annotated[str | None, Query(max_length=200)] = None) -> IssuePage:
+    rows, has_more = issues.list_issues(db, session.user_id, project_id, limit, offset,
+        status=status, priority=priority, type=type, label_id=label_id, q=q)
     return IssuePage(items=[PublicIssue.model_validate(row) for row in rows], has_more=has_more)
 
 

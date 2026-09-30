@@ -11,6 +11,7 @@
 | 5 — Core issues | Create/list/read/edit/status implemented with owner-scoped access and archived-project restrictions | 0005 approved/applied; real-browser issue functionality confirmed by user |
 | 5b — Comments and labels | Implemented: comment create/read/edit/delete, project labels and issue assignments | 183 backend tests; build; 15 new + 75 existing simulated frontend checks passed; 0006 approved/applied |
 | 6 — Board | Implemented: List/Board views, five columns, confirmed moves, keyboard controls, desktop dragging and mobile column selector | 151 backend tests; production build; 18 board + 57 existing simulated checks passed; board browser acceptance pending |
+| 6b — Filtering and dashboard | Shared URL filters, server title search, active-work totals and bounded recent work | 197 backend tests; 104 simulated frontend checks; production build; browser acceptance pending |
 | 7 — V1 quality | Remaining: accessibility review, CI, deployment, full browser acceptance | Complete V1 journey still required |
 
 After V1: GitHub integration, focused AI assistance, repository indexing/RAG, background jobs, then team collaboration. At each step, review why the code exists, implement one feature, test its meaningful behavior, and update the documentation.
@@ -103,5 +104,22 @@ After explicit approval, local devpilot was upgraded from 0005 to
 **0006_comments_labels (head)**. Alembic check reports no schema drift. Existing
 users, sessions, projects and issues were verified unchanged; read-only label/issue
 queries passed for all four projects and comments for the existing issue. No
-development downgrade was run. Next: complete the README browser checklist. Analytics, global search, assignment, notifications,
+development downgrade was run. Next: complete the README browser checklist. Historical analytics, global search, assignment, notifications,
 issue archival/deletion, GitHub and AI remain deferred. No commit or push.
+
+## Filtering and dashboard handoff
+
+Implemented: shared URL filters and literal title search before pagination,
+matching List/Board views, status-filtered move offset correction, active-work
+aggregates and bounded recent work. Previous statements deferring issue filters
+or dashboard counts are superseded; historical analytics/global search remain
+future. No migration: read-only local check confirmed 0006_comments_labels.
+
+Full isolated backend suite: 197 passed, 22 existing deprecation warnings in
+66.37s. Frontend: 14 new filtering/dashboard checks plus 90 regression checks
+passed (104 total), with zero unhandled rejections. These use React DOM/jsdom,
+mocked requests and simulated routing; they are not browser verification.
+Production build passed including TypeScript and all nine static pages. No new
+dependencies. Test PostgreSQL cluster stopped after testing. Browser inventory
+reported no browsers; Chrome/Edge, responsive layout, actual Back/Forward/copied
+links and keyboard acceptance remain in the README checklist. No commit/push.

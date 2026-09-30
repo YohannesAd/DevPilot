@@ -42,7 +42,7 @@ class SecurityMiddleware:
 
         async def no_store(message):
             if message["type"] == "http.response.start" and scope["path"].startswith(
-                ("/api/auth/", "/api/users/", "/api/projects")
+                ("/api/auth/", "/api/users/", "/api/projects", "/api/dashboard")
             ):
                 MutableHeaders(scope=message)["Cache-Control"] = "no-store"
             await send(message)

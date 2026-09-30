@@ -5,7 +5,7 @@
 | Register / login | Email, password, validation message | Create account or sign in |
 | Project list | Active projects, archive toggle, issue counts | Create project |
 | Project overview | Name, description, counts by status, recent issues | Open board or new issue |
-| Issue list | Search/filter by status, type, priority | Open or create issue |
+| Issue list | Title search and status, type, priority, label filters | Open or create issue |
 | Kanban board | Backlog, Todo, In Progress, Review, Done columns | Move issue to another status |
 | Issue detail | Title, description, type, priority, status, labels, assignee, comments | Edit and comment |
 
@@ -18,7 +18,7 @@ The screen plan above describes eventual V1. The current milestone includes:
 | Screen | Implemented content and action |
 | --- | --- |
 | / | Public welcome; a valid session redirects to /dashboard |
-| /dashboard | Personal greeting, up to four newest active projects, Create project, View all projects |
+| /dashboard | Personal greeting, active project/issue totals, five status counts, six recently updated issues, four recently updated active projects, Create project, View all projects |
 | /projects | Active/Archived view links, paginated active cards, inline create form |
 | /projects?status=archived | Paginated archived cards, archive dates, useful empty state |
 | /projects/[id] active | Saved project details, edit/archive, List/Board navigation, paginated issue list, Create issue form |
@@ -29,7 +29,7 @@ The screen plan above describes eventual V1. The current milestone includes:
 
 Signed-in Home and the logo lead to /dashboard. Projects leads to /projects;
 My account leads to /account. Navigation wraps on narrow screens. Cards use two
-columns on desktop and one on mobile. Dashboard issue counts and activity remain deferred. Active empty lists offer Create project and Archived;
+columns on desktop and one on mobile. Dashboard issue counts are implemented; historical activity remains deferred. Active empty lists offer Create project and Archived;
 archived empty lists explain preservation and link back to Active. Loading, recoverable
 errors with retry, validation errors, and inaccessible projects have explicit states.
 Forms have visible labels and focus indicators and retain input after API failures.
@@ -82,7 +82,7 @@ Controls wrap/stack at the existing mobile breakpoint; long titles/descriptions
 wrap and descriptions preserve line breaks without interpreting markup. Status
 is always text, not color alone. Existing focus outlines and native keyboard
 controls are retained. Comment/label controls are described below; assignment and
-issue deletion remain deferred. Search/filter controls and dashboard issue counts remain future.
+issue deletion remain deferred. Shared List/Board filters and dashboard issue counts are now implemented.
 
 ## Implemented board flow
 
@@ -133,3 +133,25 @@ Older comments always remain accessible via paging. Archived comments are read-o
 
 Real Chrome/Edge desktop/mobile, keyboard, focus and screen-reader checks remain
 manual; the implemented flows have simulated DOM and isolated API coverage.
+
+## Filtering and dashboard screens
+
+Above List/Board: visible Status, Priority, Type, Label and Search issue titles
+labels, Apply filters button and Clear filters link. Desktop controls use a grid;
+small screens stack them. Label choices have Previous/More controls (20 per page).
+An off-page selected label remains selected. Help text explains AND matching and
+whole-project title search. URL parameters are status, priority, type, label_id,
+q and view=board; List is the default. View links retain filters (including a
+round trip through Labels). Apply creates a browser history entry; refresh,
+Back/Forward and copied links restore the controls and start pagination at zero.
+No matching issues offers change/clear guidance; No issues yet offers creation.
+Invalid queries remain visible with a correction/clear path. Archived work is
+filterable and readable, while creation and board movement remain disabled.
+
+The dashboard shows Active projects and Issues in active projects, followed by
+Backlog/Todo/In Progress/Review/Done counts as text. Scope copy explicitly excludes
+archived projects and includes Done. Recent issue links show project, title,
+status/type/priority and update time; recent project links show name, description
+and project update time. Refresh dashboard loads current values. Loading and
+retry replace failed content; no active projects offers Create project and
+Archived. No fabricated charts, trends or activity feed are displayed.

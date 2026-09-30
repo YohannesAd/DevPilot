@@ -7,6 +7,7 @@ from app.routes.users import router as users_router
 from app.routes.projects import router as projects_router
 from app.routes.issues import router as issues_router
 from app.routes.organization import router as organization_router
+from app.routes.dashboard import router as dashboard_router
 from app.services.organization import OrganizationError
 from app.security import SecurityMiddleware
 from app.services.auth import AuthenticationRequired, InvalidCredentials
@@ -22,6 +23,7 @@ app.include_router(users_router)
 app.include_router(projects_router)
 app.include_router(issues_router)
 app.include_router(organization_router)
+app.include_router(dashboard_router)
 
 
 @app.exception_handler(OrganizationError)

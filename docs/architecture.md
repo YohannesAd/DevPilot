@@ -97,7 +97,9 @@ Direct private URLs are restored after login using an allowlisted internal next
 path. The server remains the authorization boundary. No identity or project data
 is stored in localStorage. ProjectList and ProjectForm share the API client,
 buttons, fields and CSS design tokens. The dashboard shows up to four actual
-active projects; the full list uses twenty per page. Account reuses the workspace shell.
+active projects ordered by project update time, plus real aggregated issue counts
+and up to six recently updated issues; the full project list uses twenty per page.
+Account reuses the workspace shell.
 ProjectForm shares create/edit validation and retains unsaved input on recoverable
 errors. ProjectDetail owns mutation state and displays only server-returned saved
 values. Project pages focus on routing/data fetching. ConfirmDialog uses native
@@ -153,7 +155,9 @@ action requests at most 100 more; there is no automatic all-project fetch loop o
 arbitrary total cap. Loaded cards accumulate on explicit demand, so memory grows
 with the number requested. Counts are labeled loaded, and has_more is always
 exposed through the load action and explanatory text. All five columns use this
-same unfiltered ordered collection; status changes never change page boundaries.
+same filtered ordered collection. Without a status filter, status moves do not
+change page boundaries. With a status filter, a confirmed move out of that status
+removes the card and decrements the next offset to avoid skipping a matching row.
 Offset pagination is not a snapshot: concurrent issue creation can shift pages.
 Overlapping IDs are de-duplicated, keeping newer saved versions; Refresh board
 starts again at offset zero to discover work created in another tab.
@@ -204,3 +208,34 @@ its native modal focus handling and the original archive defaults.
 No runtime dependency is added. Cross-tab edits become visible on refresh or
 view re-entry; no live synchronization is promised. Code requires migration 0006,
 which is now approved, applied and verified on local devpilot.
+
+## Filtering and real-data dashboard
+
+Issue routes validate enums, UUIDs, search length and page bounds; issue services
+apply owner authorization and all SQL predicates before limit/offset. Label
+membership uses EXISTS, avoiding duplicate rows and keeping batch label loading.
+No schema or authentication changes are required.
+
+lib/issueFilters.ts owns URL parsing/serialization. ProjectIssueViews composes
+IssueFilters plus List/Board. Apply pushes a history entry; navigation preserves
+filters even through Labels. Changing the canonical query remounts the data view,
+resets pagination and invalidates old requests. The form is also keyed by the
+query so Back/Forward updates saved controls. Label choices load 20 per page and
+retain an off-page selection. Invalid URL values remain correctable; empty
+results distinguish no matching issues from a project with no issues.
+
+Board loading uses the same server filters, 100 at a time across all five columns.
+Moves remain confirmed and serialized. A successful move outside a status filter
+removes the card, announces why, focuses the board heading, and decreases the next
+offset by one. Failures preserve cards. Other clients can still shift offset
+boundaries; refresh restarts paging. Existing generation guards and useApi stale
+result handling remain intact without aborting effect cleanup.
+
+routes/dashboard.py delegates to services/dashboard.py and returns typed schemas.
+Four bounded-result business queries count projects, group issue counts by status,
+and select four recent projects/six recent issues. Recent issues select columns
+only, without loading labels or N+1 queries. Normal session lookup is additional.
+Aggregates still scan qualifying rows; the four statements are ordinary reads,
+not a promised cross-query snapshot during concurrent writes. Dashboard renders
+server counts through the existing Workspace/useApi boundary, with retry and
+empty-account actions; its route remains a composition wrapper.
