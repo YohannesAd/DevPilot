@@ -67,6 +67,39 @@ def test_create_defaults_update_clear_and_persist(client, workspace, clean_datab
     assert client.get(f"/api/projects/{project['id']}").json() == project
 
 
+def test_board_pages_and_status_moves_agree_with_list_after_relogin(client, workspace, clean_database):
+    credentials, project, path = workspace
+    statuses = ["backlog", "todo", "in_progress", "review", "done"]
+    base = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    with Session(clean_database) as db:
+        db.add_all([Issue(project_id=UUID(project["id"]), title=f"Board issue {i}",
+                          status=statuses[i % 5], created_at=base + timedelta(microseconds=i))
+                    for i in range(125)])
+        db.commit()
+    first = client.get(path + "?limit=100&offset=0").json()
+    second = client.get(path + "?limit=100&offset=100").json()
+    rows = first["items"] + second["items"]
+    assert len(first["items"]) == 100 and first["has_more"] is True
+    assert len(second["items"]) == 25 and second["has_more"] is False
+    assert len({row["id"] for row in rows}) == 125
+    assert {row["status"] for row in rows} == set(statuses)
+    original_order = [row["id"] for row in rows]
+    selected = rows[-1]
+    detail = f"{path}/{selected['id']}"
+    for status in statuses:
+        saved = client.patch(detail, json={"status": status})
+        assert saved.status_code == 200 and saved.json()["status"] == status
+        assert saved.json()["created_at"] == selected["created_at"]
+    assert client.patch(detail, json={"status": "blocked"}).status_code == 422
+    assert client.post("/api/auth/logout").status_code == 204
+    assert client.post("/api/auth/login", json=credentials).status_code == 200
+    # The list's 20-item pages and board's 100-item pages expose the same saved data.
+    listing = [row for offset in range(0, 125, 20)
+               for row in client.get(f"{path}?limit=20&offset={offset}").json()["items"]]
+    assert [row["id"] for row in listing] == original_order
+    assert listing[-1]["status"] == client.get(detail).json()["status"] == "done"
+
+
 INVALID = [
     {"title": None}, {"title": ""}, {"title": " \t\r\n "}, {"title": "x" * 201}, {"title": 2},
     {"description": 3}, {"description": "x" * 10001}, {"type": "story"}, {"type": None},

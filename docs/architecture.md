@@ -133,3 +133,41 @@ descriptions are rendered as React text. No new runtime dependencies are added.
 return URLs now include nested issue details. Existing useApi/AuthForm/welcome
 stale-result protection is unchanged; effect cleanup never reintroduces abort().
 Local tests with simulated DOM/fetch/router are not real browser verification.
+
+## Project Kanban board
+
+ProjectDetail composes ProjectIssueViews inside Suspense. The URL selects List
+(default) or Board (`?view=board`), survives refresh and safe login returns, and
+remounts the data view when switching. Existing route pages remain unchanged.
+The user confirmed the earlier real-browser issue journey; board-specific browser
+acceptance remains unverified by this agent.
+
+IssueBoard composes BoardColumn and its card. useIssueBoard owns bounded paging,
+confirmed status mutations, error states, and stale-result protection. Native
+HTML desktop drag events call the same move function as the labeled select/form;
+no drag dependency is necessary. External drops are ignored. Mobile uses an
+explicit column selector and the same keyboard-operable Move to controls.
+
+Loading starts with 100 newest issues across all statuses. Each Load older issues
+action requests at most 100 more; there is no automatic all-project fetch loop or
+arbitrary total cap. Loaded cards accumulate on explicit demand, so memory grows
+with the number requested. Counts are labeled loaded, and has_more is always
+exposed through the load action and explanatory text. All five columns use this
+same unfiltered ordered collection; status changes never change page boundaries.
+Offset pagination is not a snapshot: concurrent issue creation can shift pages.
+Overlapping IDs are de-duplicated, keeping newer saved versions; Refresh board
+starts again at offset zero to discover work created in another tab.
+
+One load or move request is allowed at a time, guarded synchronously by a ref.
+Updates use only the existing PATCH status field and returned saved issue. Cards
+do not move optimistically; failed moves preserve the last confirmed state and
+chosen destination. Uncertain network failures offer an idempotent retry or refresh.
+Map insertion order preserves exact API creation/UUID ordering, including
+sub-millisecond timestamps, without adding ordering fields. Other tabs use
+last-confirmed-write behavior; live synchronization/version conflict detection
+is outside scope. Refresh or re-enter the view to obtain their changes.
+
+Effect generations ignore obsolete results on Strict Mode replay, route changes,
+archival-state remounts and unmount. Cleanup does not abort fetch. Archived boards
+disable all movement; a server 409 also blocks stale active controls and explains
+restoration. Backend ownership/session/CSRF/archive locks remain unchanged.

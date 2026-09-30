@@ -21,7 +21,7 @@ All routes use `/api`. Request and response bodies are JSON. IDs are UUIDs. Prot
 | GET | `/api/projects/{project_id}/summary` | Future: dashboard status counts |
 
 Issue PATCH accepts only `title`, `description`, `type`, `status`, and `priority`.
-Assignment, issue archival/deletion, labels, comments, board, and list filters are
+Assignment, issue archival/deletion, labels, comments, and list filters are
 deferred. Lists currently support bounded pagination. The exact issue contract is below.
 
 ## Registration (implemented)
@@ -293,3 +293,20 @@ An issue is never moved to another project through PATCH.
 
 Example issue error: `{"error":{"code":"issue_not_found","message":"Issue not found."}}`.
 Validation responses retain the existing sanitized envelope and do not echo input.
+
+## Board client contract (implemented)
+
+No new endpoint: the board requests the existing issue collection with
+`limit=100&offset=0`, then increments offset by each returned page length when
+the user selects Load older issues. It groups loaded issues into Backlog, Todo,
+In Progress, Review, Done, and clearly marks partial counts. `has_more` governs
+the next action; all issues are reachable, not just the first list page.
+Repeated page IDs are de-duplicated. Refresh restarts at zero; offset paging is
+not a concurrent snapshot. List/Board use the same saved records and ordering.
+
+Both desktop dragging and Move to submit only `{"status":"<documented value>"}`
+to `PATCH /api/projects/{project_id}/issues/{issue_id}`. Only confirmed responses
+move cards. A retry repeats the same desired status safely; a network failure
+can mean the write succeeded, so refreshing also reconciles the saved status.
+Authentication, exact Origin checks, owner/project scope, and archived 409 rules
+are unchanged. A server error retains the generic error envelope and CORS headers.

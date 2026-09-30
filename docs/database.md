@@ -147,3 +147,12 @@ Alembic reports 0005 (head) and no schema drift. All four existing project rows
 were verified unchanged; owner-scoped issue-list reads succeeded for each.
 Automated mutation and downgrade tests use only guarded devpilot_test. Tests verify constraints independently of the API,
 metadata agreement, and project/archive-state preservation across rollback.
+
+## Board persistence
+
+The Kanban milestone requires no migration. Local head remains
+`0005_create_issues`. Movement updates only the existing issues.status and ORM
+updated_at; IDs, project membership, and created_at stay fixed. No board table,
+rank, position, or manual-order field is added. Cards retain the API's
+created_at DESC, id DESC ordering. The existing status constraint and parent row
+lock continue to enforce valid statuses and archived-project restrictions.

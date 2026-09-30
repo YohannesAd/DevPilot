@@ -21,15 +21,15 @@ The screen plan above describes eventual V1. The current milestone includes:
 | /dashboard | Personal greeting, up to four newest active projects, Create project, View all projects |
 | /projects | Active/Archived view links, paginated active cards, inline create form |
 | /projects?status=archived | Paginated archived cards, archive dates, useful empty state |
-| /projects/[id] active | Saved project details, edit/archive, paginated issue list, Create issue form |
+| /projects/[id] active | Saved project details, edit/archive, List/Board navigation, paginated issue list, Create issue form |
+| /projects/[id]?view=board | Five status columns, paged loading, Move to controls, desktop dragging; read-only while archived |
 | /projects/[id] archived | Prominent archived state/date, preserved project and issue details, Restore; no issue creation |
 | /projects/[id]/issues/[issueId] | Saved issue title/description, text type/status/priority, dates, Back to project, Edit issue for active projects |
 | /account | Profile and working logout; workspace navigation |
 
 Signed-in Home and the logo lead to /dashboard. Projects leads to /projects;
 My account leads to /account. Navigation wraps on narrow screens. Cards use two
-columns on desktop and one on mobile. No issue counts, activity or board
-actions are presented. Active empty lists offer Create project and Archived;
+columns on desktop and one on mobile. Dashboard issue counts and activity remain deferred. Active empty lists offer Create project and Archived;
 archived empty lists explain preservation and link back to Active. Loading, recoverable
 errors with retry, validation errors, and inaccessible projects have explicit states.
 Forms have visible labels and focus indicators and retain input after API failures.
@@ -81,5 +81,29 @@ that restoration is required.
 Controls wrap/stack at the existing mobile breakpoint; long titles/descriptions
 wrap and descriptions preserve line breaks without interpreting markup. Status
 is always text, not color alone. Existing focus outlines and native keyboard
-controls are retained. No board, labels, comments, assignment or deletion actions
+controls are retained. No labels, comments, assignment or deletion actions
 are displayed. Search/filter controls and dashboard issue counts remain future.
+
+## Implemented board flow
+
+Below project details, List and Board links show the active view. Board uses
+`/projects/[id]?view=board`, preserving the view across refresh and login. Desktop
+shows five columns in documented order with horizontal scrolling as needed.
+Each card has a linked title, text type/priority/status, a labeled Move to select,
+and a Move button. Native desktop dragging drops into another status column;
+the card remains in its original column until the saved response arrives.
+
+During a request, movement/loading controls are disabled to prevent conflicting
+updates. Success is announced and focus moves to the saved card's detail link.
+Errors are announced and keep the current card and chosen target. Archived
+boards explain restoration and disable selects, move buttons and dragging.
+
+At 640px and below, Show column selects one visible column. A successful move
+selects its destination column and focuses that card. Dragging is never required.
+Each empty column distinguishes no loaded cards from a fully loaded empty status.
+The toolbar has Refresh board. Below the columns, Load older issues remains until
+all pages are loaded; displayed counts explicitly refer to loaded cards.
+
+The user confirmed the earlier real-browser issue functionality. This board's
+desktop/mobile layout, drag feedback and actual keyboard focus still require
+browser acceptance; simulated events do not constitute browser verification.

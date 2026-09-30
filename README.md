@@ -4,7 +4,7 @@ DevPilot is a workspace for individual developers to organize projects and track
 
 ## First coding milestone
 
-This repository began with a small vertical slice: a FastAPI health endpoint and a Next.js page that fetches it. Accounts, persistent sessions, private project management and core issues are implemented. Owners can create, list, view, edit and change issue status inside projects. Local migration `0004_project_archival` is applied. `0005_create_issues` is also approved, applied, and verified on local `devpilot`. Board, comments, labels, assignment, issue archival/deletion, GitHub and AI remain deferred.
+This repository began with a small vertical slice: a FastAPI health endpoint and a Next.js page that fetches it. Accounts, persistent sessions, private project management and core issues are implemented. Owners can create, list, view, edit and change issue status inside projects. Local migration `0004_project_archival` is applied. `0005_create_issues` is also approved, applied, and verified on local `devpilot`. The project Kanban board is implemented. Comments, labels, assignment, issue archival/deletion, GitHub and AI remain deferred.
 
 For the existing Windows setup, use the terminal/directory-labeled commands in
 **Core issues: local commands and acceptance** below. Migration 0005 is already
@@ -319,8 +319,8 @@ states. Desktop/mobile screenshots and their review gallery are in
 
 ## Next step
 
-Migration 0005 is applied. Complete real-browser checks of core issue
-creation/edit/status persistence and archived read-only behavior.
+Migration 0005 is applied, and the user has confirmed real-browser issue functionality.
+Complete board-specific browser acceptance described below.
 See `docs/roadmap.md` for the build order.
 
 ## Core issues: local commands and acceptance
@@ -498,7 +498,7 @@ node .local-checks/auth-session-check.cjs
 | frontend/app/projects/[id]/issues/[issueId]/page.tsx | Thin issue-page composition |
 | README.md, docs/api.md, database.md, architecture.md, prd.md, wireframes.md, roadmap.md | Contract, status corrections, effects, inventory, commands and checks |
 
-No application dependency, board, labels, comments, assignment, issue archival,
+The core issue milestone added no application dependency, labels, comments, assignment, issue archival,
 deletion, GitHub or AI feature was added.
 
 ## First signed-in project workspace
@@ -578,7 +578,7 @@ Check keyboard focus, field errors, retry states, long names/descriptions, pagin
 and desktop/mobile layouts. Browser checks are separate from API and build tests.
 
 The earlier project-management milestone excluded issues. Core issues are now
-implemented as described below; board, labels, comments, assignment, deletion,
+implemented as described below; labels, comments, assignment, deletion,
 issue statistics and unrelated hydration-warning work remain excluded.
 
 Historical validation for the first project workspace: the backend suite passed (76 tests) on
@@ -650,3 +650,143 @@ After approved migration application, perform these real-browser checks:
 | frontend/components/AuthForm.tsx, frontend/app/page.tsx | Login destination and signed-in welcome-page redirect |
 | frontend/app/account/page.tsx, frontend/app/account/page.module.css | Shared session handling and workspace link |
 | README.md, docs/prd.md, docs/architecture.md, docs/database.md, docs/api.md, docs/wireframes.md, docs/roadmap.md | Implemented scope, contracts, migration review, verification and deferred V1 work |
+
+## Project Kanban board milestone
+
+Implemented: open a project and select **Board**, or use
+`/projects/<project-id>?view=board`. **List** returns to the existing issue list
+and creation form. Active navigation and safe login return URLs preserve the view.
+The user confirmed real-browser issue functionality before this milestone; older
+issue-check notes above are historical. Board browser acceptance is still pending.
+
+Columns use Backlog, Todo, In Progress, Review, Done. Each card links to the issue
+and shows type, priority and status as text. Choose **Move to**, then **Move**, or
+drag on desktop. Cards move only after the API confirms the update. Pending
+requests disable competing actions; failures retain the card and selected target,
+with retry/refresh recovery. Archived boards are readable with movement disabled.
+Mobile has a labeled **Show column** selector and does not require dragging.
+
+The board requests 100 issues initially, across all statuses. **Load older issues**
+requests at most 100 more each time until has_more is false. Counts explicitly say
+loaded, so a partial board is never presented as complete. There is no total cap;
+loaded cards accumulate on explicit demand. Offset paging is not a snapshot:
+concurrent creation can shift pages. Duplicate IDs are merged, and **Refresh board**
+restarts at zero to discover newer work. Status changes do not affect pagination.
+Cards retain API creation-time/UUID order; no manual ordering is introduced.
+
+No migration or application dependency was added. Head remains 0005_create_issues.
+Existing authentication, ownership, CSRF, archived checks, CORS errors and Chrome
+stale-result behavior are preserved. No development project was mutated by tests.
+
+### Board changed files
+
+| File | Responsibility |
+| --- | --- |
+| frontend/components/ProjectDetail.tsx | Compose the view selector under Suspense |
+| frontend/components/ProjectIssueViews.tsx | URL-based List/Board links and view composition |
+| frontend/components/IssueBoard.tsx | Board toolbar, feedback, mobile selection and focus |
+| frontend/components/BoardColumn.tsx | Column drop areas and accessible issue cards/move forms |
+| frontend/components/IssueBoard.module.css | Existing design tokens, desktop scrolling, mobile column layout and focus |
+| frontend/lib/useIssueBoard.ts | Bounded loading, confirmed moves, deduplication, errors and stale-result protection |
+| frontend/tests/board-check.cjs | Repeatable React DOM simulations with mocked fetch/router |
+| backend/tests/test_issues.py | 125-issue board/list pagination and status persistence regression |
+| README.md; docs/prd.md, architecture.md, database.md, api.md, wireframes.md, roadmap.md | Implemented behavior, constraints, current status and verification |
+
+### Board verification results
+
+- Full backend: **151 passed, 18 existing warnings in 56.88s**, on guarded
+  devpilot_test (loopback 55432). Covers ownership, archived rejection, CSRF,
+  sessions, all five status changes, pagination and persisted List/Board agreement.
+  The isolated test cluster was stopped afterwards.
+- Frontend production build: passed, including TypeScript and page generation.
+- **18 board simulations + 57 existing frontend checks passed**, with zero
+  unhandled rejections. Simulated dragging, mobile selection and focus are not
+  actual browser/layout verification.
+- No browser was connected. No commit or push was made.
+
+### Exact local commands for the board
+
+**PowerShell, backend terminal; starting directory:**
+`C:\Users\yohan_0namuao\Downloads\DevPilot-starter\backend`
+
+```powershell
+& ..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
+```
+
+**PowerShell, separate frontend terminal; starting directory:**
+`C:\Users\yohan_0namuao\Downloads\DevPilot-starter\frontend`
+
+```powershell
+npm.cmd run dev
+```
+
+Use http://localhost:3000 consistently. Do not start duplicate servers if these
+ports are already in use by your existing terminals.
+
+**PowerShell, frontend build terminal; starting directory:** same frontend
+folder. Stop its dev server before building to avoid sharing .next.
+
+```powershell
+npm.cmd run build
+```
+
+**PowerShell, frontend simulation terminal; starting directory:**
+`C:\Users\yohan_0namuao\Downloads\DevPilot-starter`
+
+```powershell
+node frontend/tests/board-check.cjs
+node .local-checks/use-api-check.cjs
+node .local-checks/issues-check.cjs
+node .local-checks/auth-session-check.cjs
+```
+
+The board script uses the existing ignored diagnostic jsdom installation at
+`.local-checks/auth-checks/node_modules/jsdom` plus frontend React/TypeScript.
+This is test tooling, not an application dependency. On a fresh clone, install
+that isolated diagnostic dependency first (PowerShell, starting directory: root):
+
+```powershell
+npm.cmd install --prefix .local-checks/auth-checks --no-save jsdom@29.1.1
+```
+
+The three older .local-checks scripts are local diagnostics and may not exist in
+a fresh clone; frontend/tests/board-check.cjs is included in this milestone.
+
+**PowerShell, isolated backend test terminal; starting directory:**
+`C:\Users\yohan_0namuao\Downloads\DevPilot-starter`
+
+```powershell
+& 'C:\Program Files\PostgreSQL\18\bin\pg_ctl.exe' start -D "$PWD\.local-checks\management-postgres" -l "$PWD\.local-checks\management-postgres.log" -o '-h 127.0.0.1 -p 55432' -w
+$env:TEST_DATABASE_URL = 'postgresql+psycopg://devpilot_test_admin@127.0.0.1:55432/devpilot_test'
+Set-Location .\backend
+& ..\.venv\Scripts\python.exe -m pytest tests -q
+Remove-Item Env:TEST_DATABASE_URL
+Set-Location ..
+& 'C:\Program Files\PostgreSQL\18\bin\pg_ctl.exe' stop -D "$PWD\.local-checks\management-postgres" -m fast -w
+```
+
+This uses the existing disposable local test cluster only. Never substitute the
+development URL. No migration command is needed for this milestone.
+
+### Remaining real-browser board checks
+
+1. In Chrome and Edge, open a disposable active project with issues. Select Board;
+   confirm five columns in order, card detail links, type/priority/status, empty
+   columns and active List/Board navigation. Leave other projects unchanged.
+2. Use Tab, native select keys and Enter/Space to choose Move to and confirm. Check
+   the pending state, success announcement, destination focus and saved status.
+   Switch to List and open the issue; both must agree. Refresh the board URL, sign
+   out/in and confirm its saved status and return destination.
+3. Drag between desktop columns. Confirm the card moves only after saving, its
+   creation order is retained, and external text drops do nothing. Cancel a drag.
+4. At a narrow mobile width, use Show column to reach each status and move without
+   dragging. Verify destination selection/focus, long titles and visible controls.
+5. Stop/disconnect the API, attempt a move, confirm the card and target remain;
+   reconnect and retry or refresh. Confirm there is no cleanup AbortError overlay.
+6. Archive the disposable project: Board remains readable with all movement
+   disabled. A stale active tab must receive an archived message on attempted move.
+   Restore and refresh the project to enable movement. A second account must not
+   access its project/issue URLs or issue PATCH requests.
+7. With more than 100 disposable issues, use Load older issues through completion.
+   Check partial counts/empty messages, retries without losing cards, all five
+   statuses, and agreement with List pages. Refresh after another tab creates work.

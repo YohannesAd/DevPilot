@@ -52,7 +52,7 @@ an explicit null description clears it. Forms retain edits after recoverable err
 Project migrations through 0004 are already applied to local devpilot.
 Isolated backend tests and production build passed;
 browser acceptance remains unverified because no browser was connected.
-Boards, labels, comments, assignment, issue archival/deletion, and issue counts
+Labels, comments, assignment, issue archival/deletion, and issue counts
 remain future V1 work. No placeholder activity or statistics are shown.
 
 ## Implemented core issues milestone
@@ -71,6 +71,24 @@ Changes persist across new requests and sign-out/sign-in. Forms preserve drafts
 after recoverable failures; no draft is stored in browser storage.
 
 Migration 0005 is tested in isolation and approved/applied to local
-devpilot. Browser acceptance remains pending; tests with HTTP clients or a
-simulated DOM do not establish browser behavior. The board, comments, labels,
-assignment, deletion, GitHub and AI are explicitly outside this milestone.
+devpilot. The user subsequently confirmed real-browser issue functionality.
+Board-specific browser checks remain separate; HTTP-client and simulated DOM
+checks do not establish browser behavior. Comments, labels, assignment, deletion,
+GitHub and AI remain deferred.
+
+## Implemented Kanban milestone
+
+Each project offers List and Board views with explicit active navigation.
+The board displays Backlog, Todo, In Progress, Review, Done in that order. Cards
+link to details and show title, type, priority and text status. Owners move cards
+through a labeled Move to select and confirmation button or desktop dragging.
+Saved responses update the board and announce success; failed moves preserve
+the confirmed card and explain retry/refresh. Archived boards remain readable
+with movement disabled. On mobile a labeled selector navigates columns.
+
+The board loads 100 newest issues per explicit page request, across all statuses,
+and offers Load older issues until complete. Partial counts say loaded. There is
+no hidden total cap, automatic unbounded fetch, or new manual ordering model.
+Refresh and List/Board switching load persisted records; status movement reuses
+the authenticated issue update endpoint. Comments, labels, global search,
+assignment, GitHub and AI remain out of scope. No migration is required.
