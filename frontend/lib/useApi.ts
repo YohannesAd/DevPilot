@@ -18,7 +18,10 @@ export function useApi<T>(path: string) {
       if (active) setResult({ path, data });
     }).catch(error => {
       if (!active) return;
-      if (error instanceof ApiError && error.status === 401) router.replace(loginDestination());
+      if (error instanceof ApiError && error.status === 401) {
+        try { router.replace(loginDestination()); }
+        catch { setResult({ path, error: new ApiError(401, "navigation_failed", "Your session expired. Open Sign in to continue.") }); }
+      }
       else setResult({ path, error });
     });
     return () => { active = false; };

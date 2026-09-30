@@ -12,7 +12,7 @@
 | 5b — Comments and labels | Implemented: comment create/read/edit/delete, project labels and issue assignments | 183 backend tests; build; 15 new + 75 existing simulated frontend checks passed; 0006 approved/applied |
 | 6 — Board | Implemented: List/Board views, five columns, confirmed moves, keyboard controls, desktop dragging and mobile column selector | 151 backend tests; production build; 18 board + 57 existing simulated checks passed; board browser acceptance pending |
 | 6b — Filtering and dashboard | Shared URL filters, server title search, active-work totals and bounded recent work | 197 backend tests; 104 simulated frontend checks; production build; browser acceptance pending |
-| 7 — V1 quality | Remaining: accessibility review, CI, deployment, full browser acceptance | Complete V1 journey still required |
+| 7 — V1 quality | Release review and CI implemented; core browser journey confirmed by user | Local clean setup: 200 backend / 105 frontend checks and build passed; hosted Actions, production configuration and staging acceptance remain |
 
 After V1: GitHub integration, focused AI assistance, repository indexing/RAG, background jobs, then team collaboration. At each step, review why the code exists, implement one feature, test its meaningful behavior, and update the documentation.
 
@@ -123,3 +123,13 @@ Production build passed including TypeScript and all nine static pages. No new
 dependencies. Test PostgreSQL cluster stopped after testing. Browser inventory
 reported no browsers; Chrome/Edge, responsive layout, actual Back/Forward/copied
 links and keyboard acceptance remain in the README checklist. No commit/push.
+
+## Release-readiness review
+
+The current user confirms the core journey in a real browser. The independent
+release review reran source-only setup and checks: 200 backend tests, 105 tracked
+frontend simulations, successful production build and dependency audits. GitHub
+Actions is implemented but has not yet run on GitHub. Local devpilot remains at
+0006_comments_labels with no metadata differences under read-only comparison.
+See [release findings](release-readiness.md), [testing commands](testing.md) and
+[production decisions](deployment.md). Older verification sections are historical.

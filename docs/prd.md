@@ -10,8 +10,8 @@ Individual developers track project work across notes and code hosting, which ma
 | --- | --- |
 | Accounts | Register, log in, log out, view profile, protect private data |
 | Projects | Create, list, edit, archive, restore, view dashboard |
-| Issues | Create, edit, archive; classify as bug, feature, or task; set priority and status |
-| Organization | Add project labels, optionally assign an issue to its owner, add and read comments |
+| Issues | Create, view and edit; classify as bug, feature, or task; set priority and status; project-scoped filters |
+| Organization | Manage project labels and issue assignments of labels; create, edit and delete own comments |
 | Workflow | View five status columns, change status, persist changes across refresh |
 
 The statuses are Backlog, Todo, In Progress, Review, and Done. Priorities are Low, Medium, High, and Urgent. V1 has one owner per project; assigning an issue means assigning it to that owner or leaving it unassigned. Multiuser assignment is deferred until project membership exists.
@@ -52,8 +52,8 @@ an explicit null description clears it. Forms retain edits after recoverable err
 Project migrations through 0004 are already applied to local devpilot.
 Isolated backend tests and production build passed;
 browser acceptance remains unverified because no browser was connected.
-Assignment, issue archival/deletion, and issue counts
-remain future V1 work. No placeholder activity or statistics are shown.
+Assignment and issue archival/deletion remain future work. Dashboard issue counts
+are implemented. No placeholder activity or statistics are shown.
 
 ## Implemented core issues milestone
 
@@ -130,3 +130,12 @@ Archived work is excluded. Empty accounts get Create project; failures offer
 retry. This supersedes earlier deferred project-search/dashboard-count notes and
 the API sketch of a per-project summary. Global search, historical trends,
 notifications, assignment, GitHub and AI remain outside this milestone.
+
+## V1 release acceptance
+
+The user has confirmed core functionality in a real browser. This is distinct
+from automated DOM simulations and the production-hosting checks still required.
+[Release review](release-readiness.md) records the independent clean-setup results
+and deployment gates; [deployment](deployment.md) defines configuration/recovery
+and abuse-control decisions. CI is implemented, but its first hosted run remains
+pending. Assignment, issue archival/deletion and global search remain deferred.

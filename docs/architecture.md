@@ -17,7 +17,7 @@ The browser loads the Next.js interface and calls the FastAPI REST API. The API 
 | PostgreSQL with SQLAlchemy and Alembic | Relational ownership and issue data need foreign keys and reproducible migrations. |
 | Email/password with server-managed session cookie | Avoids putting bearer tokens in browser storage; later GitHub OAuth can add an identity method. |
 | Single project owner in V1 | Gives assignment a clear meaning and avoids pretending team permissions exist. |
-| Archive projects and issues | Preserves comments and historical issue references. |
+| Archive projects | Preserves issues and comments; per-issue archival is deferred. |
 | No worker or Redis yet | V1 actions are ordinary request/response operations. |
 
 ## Authentication and request path
@@ -239,3 +239,13 @@ Aggregates still scan qualifying rows; the four statements are ordinary reads,
 not a promised cross-query snapshot during concurrent writes. Dashboard renders
 server counts through the existing Workspace/useApi boundary, with retry and
 empty-account actions; its route remains a composition wrapper.
+
+## Release tooling
+
+PR/push checks and supported runtime pins are in .github/workflows/checks.yml,
+.python-version and .nvmrc. Exact Python hashes and npm lock resolution support
+fresh installations. All six frontend harnesses are tracked and run through
+npm test; local .local-checks is no longer a test dependency. HTTP routing errors
+now use the same sanitized envelope. useApi catches failed session navigation
+while preserving stale-result cleanup. See [release review](release-readiness.md)
+and [production configuration](deployment.md); CI does not deploy.

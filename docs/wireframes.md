@@ -3,11 +3,11 @@
 | Screen | Key content | Main action |
 | --- | --- | --- |
 | Register / login | Email, password, validation message | Create account or sign in |
-| Project list | Active projects, archive toggle, issue counts | Create project |
-| Project overview | Name, description, counts by status, recent issues | Open board or new issue |
+| Project list | Active projects, archive toggle | Create project |
+| Project overview | Name, description, filtered issue List/Board and Labels | Open board or new issue |
 | Issue list | Title search and status, type, priority, label filters | Open or create issue |
 | Kanban board | Backlog, Todo, In Progress, Review, Done columns | Move issue to another status |
-| Issue detail | Title, description, type, priority, status, labels, assignee, comments | Edit and comment |
+| Issue detail | Title, description, type, priority, status, labels, comments | Edit and comment |
 
 Desktop board has five columns with horizontal scrolling when needed. On a narrow screen, provide a status selector or horizontally scrollable columns; drag and drop must not be the only way to update status. Each form shows field errors and keeps entered content after recoverable failures. Archived items remain accessible from an explicit archive view.
 
@@ -155,3 +155,8 @@ status/type/priority and update time; recent project links show name, descriptio
 and project update time. Refresh dashboard loads current values. Loading and
 retry replace failed content; no active projects offers Create project and
 Archived. No fabricated charts, trends or activity feed are displayed.
+
+Current core browser functionality is confirmed by the user. Remaining staging
+Chrome/Edge, mobile and keyboard checks belong to the
+[production acceptance checklist](deployment.md), distinct from local simulations.
+Historical milestone-specific claims above describe their original verification.

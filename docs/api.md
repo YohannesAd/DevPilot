@@ -417,3 +417,12 @@ parent project's timestamp. This is recent saved work, not an activity log.
 No client-side issue download is needed for totals. Refresh/re-entry reads current
 values; there is no live subscription. The planned per-project summary endpoint
 has been replaced by this account dashboard contract.
+
+## Release review: routing errors
+
+Unknown routes return 404 with error.code=not_found; unsupported methods return
+405 with error.code=method_not_allowed and preserve Allow. They use the established
+error envelope without reflecting exception details. Configured credentialed CORS
+and private no-store remain in force. Domain-specific project/issue/comment/label
+404 codes are unchanged. Preflight rejection remains middleware HTTP 400.
+See [release review](release-readiness.md) for security coverage and audits.

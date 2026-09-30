@@ -177,6 +177,36 @@ def test_comment_author_enforced(client, work, clean_database):
     assert client.delete(url).status_code == 404
 
 
+def test_foreign_ids_under_attackers_own_project_leave_owner_data_unchanged(client, work):
+    credentials, _, _, issue, root, path = work
+    comment = client.post(path, json={"body": "Private comment"}).json()
+    label = client.post(root + "/labels", json={"name": "Private label"}).json()
+    client.put(f"{root}/issues/{issue['id']}/labels/{label['id']}")
+    client.post("/api/auth/logout")
+    attacker = {"email": "direct-id@example.com", "password": token_urlsafe(24)}
+    client.post("/api/auth/register", json={**attacker, "display_name": "Second owner"})
+    client.post("/api/auth/login", json=attacker)
+    own = client.post("/api/projects", json={"name": "Own project"}).json()
+    own_root = f"/api/projects/{own['id']}"
+    own_issue = client.post(own_root + "/issues", json={"title": "Own issue"}).json()
+    comment_path = f"{own_root}/issues/{own_issue['id']}/comments/{comment['id']}"
+    label_path = f"{own_root}/labels/{label['id']}"
+    for url, payload in [(comment_path, {"body": "Intrusion"}), (label_path, {"name": "Intrusion"})]:
+        for method in ["GET", "PATCH", "DELETE"]:
+            result = client.request(method, url, **({"json": payload} if method == "PATCH" else {}))
+            assert result.status_code == 404
+    assignment = f"{own_root}/issues/{own_issue['id']}/labels/{label['id']}"
+    assert client.put(assignment).status_code == 404
+    assert client.delete(assignment).status_code == 404
+    assert client.get(own_root + "/labels").json()["items"] == []
+    assert client.get(f"{own_root}/issues/{own_issue['id']}/comments").json()["items"] == []
+    client.post("/api/auth/logout")
+    client.post("/api/auth/login", json=credentials)
+    assert client.get(f"{path}/{comment['id']}").json() == comment
+    assert client.get(f"{root}/labels/{label['id']}").json() == label
+    assert client.get(f"{root}/issues/{issue['id']}").json()["labels"] == [label]
+
+
 def test_labels_batched_for_board_and_new_methods_cors(client, work, clean_database):
     with Session(clean_database) as db:
         db.add_all([Issue(project_id=UUID(work[2]["id"]),title=f"Issue {i}") for i in range(30)])

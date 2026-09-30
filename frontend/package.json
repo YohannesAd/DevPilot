@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "node tests/run.cjs"
   },
   "dependencies": {
     "next": "^15.5.0",
@@ -16,6 +17,9 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "^5.9.0"
-  }
+    "typescript": "^5.9.0",
+    "jsdom": "29.1.1"
+  },
+  "engines": { "node": ">=22.13 <23" },
+  "overrides": { "postcss": "8.5.28" }
 }

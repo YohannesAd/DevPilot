@@ -23,7 +23,7 @@ issues in migration 0005.
 | users | `id` UUID PK, `email` unique case insensitive, `password_hash`, `display_name`, timestamps |
 | sessions | `id` UUID PK, `user_id` FK, `token_hash` unique, `expires_at`, `revoked_at`, `created_at` |
 | projects | `id` UUID PK, `owner_id` FK, `name`, `description`, `archived_at` nullable, timestamps |
-| issues | `id` UUID PK, `project_id` FK, `title`, `description`, `type`, `status`, `priority`, `assignee_id` nullable FK, `archived_at` nullable, timestamps |
+| issues | `id` UUID PK, `project_id` FK, `title`, `description`, `type`, `status`, `priority`, timestamps; no assignee or issue archival columns |
 | labels | `id` UUID PK, `project_id` FK, `name`, `color`, unique `(project_id, lower(name))` |
 | issue_labels | `(issue_id, label_id)` composite PK, project_id and composite project foreign keys |
 | comments | `id` UUID PK, `issue_id` FK, `author_id` FK, `body`, timestamps |
@@ -199,3 +199,11 @@ Literal substring search can scan issues within a project; no speculative search
 index or historical analytics schema was added. Tune indexes only after measuring
 real workloads. Existing timestamps retain their meaning: issue edits/status
 change issue.updated_at; comments/labels are not activity timestamps for an issue.
+
+## Release review: schema verification
+
+No migrations were changed or added. The release review confirmed local devpilot
+at 0006_comments_labels and zero Alembic metadata differences, in an enforced
+read-only transaction. backend/scripts/check_schema.py is the reusable verifier.
+Clean empty-to-head and downgrade/preservation tests use only guarded disposable
+devpilot_test. See [testing](testing.md) for exact commands and comparison limits.

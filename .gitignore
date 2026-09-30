@@ -5,6 +5,13 @@ node_modules/
 .env.*
 !.env.example
 .venv/
+.venv-*/
+.local-checks/
+*.pem
+*.key
+*.p12
+.coverage
+htmlcov/
 __pycache__/
 .pytest_cache/
 *.pyc

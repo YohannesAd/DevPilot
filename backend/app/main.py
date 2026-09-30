@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException
 
 from app.routes.auth import router as auth_router
 from app.routes.users import router as users_router
@@ -24,6 +25,17 @@ app.include_router(projects_router)
 app.include_router(issues_router)
 app.include_router(organization_router)
 app.include_router(dashboard_router)
+
+
+@app.exception_handler(HTTPException)
+async def http_error(_request: Request, exc: HTTPException) -> JSONResponse:
+    # Framework 404/405 responses follow the same public envelope, without echoing details.
+    code, message = {
+        404: ("not_found", "Route not found."),
+        405: ("method_not_allowed", "Method not allowed."),
+    }.get(exc.status_code, ("request_failed", "The request could not be completed."))
+    return JSONResponse(status_code=exc.status_code, headers=exc.headers,
+                        content={"error": {"code": code, "message": message}})
 
 
 @app.exception_handler(OrganizationError)
